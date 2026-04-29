@@ -1,0 +1,23 @@
+{
+  "email": {
+    "enabled": false,
+    "from": "Cambiar <cambiar@example.com>",
+    "smtp": {
+      "host": "smtp.example.com",
+      "port": 587,
+      "secure": false,
+      "user": "cambiar@example.com"
+    },
+    "events": ["submitted", "approved", "rejected", "implemented"]
+  },
+  "sms": {
+    "enabled": false,
+    "adapter": "twilio",
+    "from": "+15555555555",
+    "twilio": {
+      "accountSid": "",
+      "fromNumber": "+15555555555"
+    },
+    "events": ["approved", "rejected"]
+  }
+}

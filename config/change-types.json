@@ -1,0 +1,86 @@
+{
+  "types": [
+    {
+      "key": "server_reboot",
+      "name": "Server Reboot",
+      "description": "Reboot of a physical or virtual server.",
+      "icon": "server",
+      "fields": [
+        { "key": "host", "label": "Hostname / FQDN", "type": "string", "required": true },
+        { "key": "reason", "label": "Reason for reboot", "type": "text", "required": true },
+        { "key": "expected_downtime_minutes", "label": "Expected downtime (minutes)", "type": "number", "required": true },
+        { "key": "affected_services", "label": "Affected services", "type": "text", "required": false },
+        { "key": "rollback_plan", "label": "Rollback plan", "type": "text", "required": false }
+      ]
+    },
+    {
+      "key": "firewall_rule",
+      "name": "Firewall Rule Change",
+      "description": "Add, modify, or remove a firewall rule.",
+      "icon": "shield",
+      "fields": [
+        { "key": "device", "label": "Firewall device", "type": "string", "required": true },
+        { "key": "operation", "label": "Operation", "type": "select", "required": true,
+          "options": ["add", "modify", "remove"] },
+        { "key": "direction", "label": "Direction", "type": "select", "required": true,
+          "options": ["inbound", "outbound", "both"] },
+        { "key": "source", "label": "Source (IP/CIDR/zone)", "type": "string", "required": true },
+        { "key": "destination", "label": "Destination (IP/CIDR/zone)", "type": "string", "required": true },
+        { "key": "ports", "label": "Ports / protocol", "type": "string", "required": true },
+        { "key": "justification", "label": "Business justification", "type": "text", "required": true }
+      ]
+    },
+    {
+      "key": "software_update",
+      "name": "Software / Package Update",
+      "description": "Update software or OS packages on one or more hosts.",
+      "icon": "package",
+      "fields": [
+        { "key": "hosts", "label": "Hosts (comma-separated)", "type": "string", "required": true },
+        { "key": "package", "label": "Package or product", "type": "string", "required": true },
+        { "key": "from_version", "label": "From version", "type": "string", "required": true },
+        { "key": "to_version", "label": "To version", "type": "string", "required": true },
+        { "key": "release_notes_url", "label": "Release notes URL", "type": "string", "required": false },
+        { "key": "rollback_plan", "label": "Rollback plan", "type": "text", "required": true }
+      ]
+    },
+    {
+      "key": "storage_change",
+      "name": "Storage / Render-farm Change",
+      "description": "Capacity, mount, or share changes that affect render or asset storage.",
+      "icon": "database",
+      "fields": [
+        { "key": "volume", "label": "Volume / share", "type": "string", "required": true },
+        { "key": "operation", "label": "Operation", "type": "select", "required": true,
+          "options": ["expand", "shrink", "remount", "decommission", "snapshot", "other"] },
+        { "key": "capacity_change_tb", "label": "Capacity change (TB, +/-)", "type": "number", "required": false },
+        { "key": "affected_projects", "label": "Affected projects / shows", "type": "text", "required": false },
+        { "key": "downtime_window", "label": "Downtime window", "type": "string", "required": false }
+      ]
+    },
+    {
+      "key": "network_change",
+      "name": "Network Change",
+      "description": "Switch, VLAN, routing, or cabling changes.",
+      "icon": "network",
+      "fields": [
+        { "key": "device", "label": "Device(s)", "type": "string", "required": true },
+        { "key": "scope", "label": "Scope", "type": "select", "required": true,
+          "options": ["vlan", "routing", "switching", "cabling", "wifi", "other"] },
+        { "key": "ports_affected", "label": "Ports / interfaces affected", "type": "string", "required": false },
+        { "key": "maintenance_window", "label": "Maintenance window", "type": "string", "required": true },
+        { "key": "rollback_plan", "label": "Rollback plan", "type": "text", "required": true }
+      ]
+    },
+    {
+      "key": "generic",
+      "name": "Generic Change",
+      "description": "Free-form change record for things that don't fit other templates.",
+      "icon": "edit",
+      "fields": [
+        { "key": "details", "label": "Change details", "type": "text", "required": true },
+        { "key": "rollback_plan", "label": "Rollback plan", "type": "text", "required": false }
+      ]
+    }
+  ]
+}

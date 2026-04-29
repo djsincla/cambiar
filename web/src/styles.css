@@ -1,0 +1,72 @@
+:root {
+  --bg: #0f1115;
+  --panel: #1a1d23;
+  --panel-2: #232730;
+  --text: #e6e8ec;
+  --muted: #8c93a3;
+  --border: #2c313c;
+  --accent: #5b9dff;
+  --accent-hover: #7fb1ff;
+  --danger: #ff6b6b;
+  --warning: #ffb84d;
+  --success: #5dd39e;
+  --radius: 6px;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.5 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+
+header.topbar { background: var(--panel); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 24px; }
+header.topbar .brand { font-weight: 600; letter-spacing: 0.5px; display: flex; align-items: center; min-width: 120px; }
+header.topbar .brand-logo { max-height: 36px; max-width: 200px; object-fit: contain; display: block; }
+header.topbar .brand-text { font-size: 16px; }
+header.topbar nav { display: flex; gap: 16px; flex: 1; }
+header.topbar nav a { color: var(--muted); padding: 6px 0; }
+header.topbar nav a.active, header.topbar nav a:hover { color: var(--text); }
+header.topbar .user { color: var(--muted); display: flex; align-items: center; gap: 12px; }
+
+main { max-width: 1100px; margin: 24px auto; padding: 0 24px; }
+h1 { margin: 0 0 16px; font-weight: 600; font-size: 22px; }
+h2 { margin: 24px 0 12px; font-weight: 600; font-size: 16px; }
+
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+.row { display: flex; gap: 12px; align-items: center; }
+.row.between { justify-content: space-between; }
+.muted { color: var(--muted); }
+
+button, .btn { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: var(--radius); cursor: pointer; font-size: 14px; }
+button:hover { background: var(--accent-hover); }
+button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+button.danger { background: var(--danger); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+input, select, textarea { width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; font: inherit; }
+textarea { min-height: 80px; resize: vertical; }
+label { display: block; margin: 12px 0 4px; color: var(--muted); font-size: 13px; }
+label .req { color: var(--danger); }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+tbody tr:hover { background: var(--panel-2); }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; border: 1px solid var(--border); }
+.badge.draft { background: var(--panel-2); color: var(--muted); }
+.badge.submitted { background: rgba(255,184,77,0.15); color: var(--warning); border-color: var(--warning); }
+.badge.approved { background: rgba(93,211,158,0.15); color: var(--success); border-color: var(--success); }
+.badge.rejected { background: rgba(255,107,107,0.15); color: var(--danger); border-color: var(--danger); }
+.badge.implemented { background: rgba(91,157,255,0.15); color: var(--accent); border-color: var(--accent); }
+.badge.closed { background: var(--panel-2); color: var(--muted); }
+.badge.rolled_back { background: rgba(255,107,107,0.15); color: var(--danger); border-color: var(--danger); }
+
+.banner { background: rgba(255,184,77,0.1); border: 1px solid var(--warning); color: var(--warning); padding: 10px 14px; border-radius: var(--radius); margin-bottom: 16px; }
+.error { color: var(--danger); margin-top: 8px; }
+
+.login-wrap { display: flex; min-height: 100vh; align-items: center; justify-content: center; }
+.login-card { width: 360px; }
+
+.audit-item { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+.audit-item:last-child { border-bottom: none; }
+.audit-item .who { color: var(--text); }

@@ -1,0 +1,26 @@
+services:
+  cambiar:
+    build: .
+    image: cambiar:latest
+    container_name: cambiar
+    restart: unless-stopped
+    ports:
+      - "${CAMBIAR_PORT:-3000}:3000"
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 64)}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-43200}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      AD_BIND_PASSWORD: ${AD_BIND_PASSWORD:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMS_AUTH_TOKEN: ${SMS_AUTH_TOKEN:-}
+    volumes:
+      # SQLite database — persisted across container rebuilds
+      - ./data:/app/data
+      # JSON config — edit on host without rebuilding the image
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
