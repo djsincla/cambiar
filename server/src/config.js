@@ -28,7 +28,13 @@ export const config = {
   logLevel: process.env.LOG_LEVEL ?? 'info',
 
   jwt: {
-    secret: required('JWT_SECRET'),
+    // Lazy: only required when actually issuing/verifying tokens. CLI tools
+    // that touch the DB but not auth (e.g. reset-admin) don't need this set.
+    get secret() {
+      const v = process.env.JWT_SECRET;
+      if (!v) throw new Error('Missing required env var: JWT_SECRET');
+      return v;
+    },
     ttlSeconds: Number(process.env.JWT_TTL_SECONDS ?? 43200),
   },
 

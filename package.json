@@ -14,6 +14,7 @@
     "build": "npm run build -w web",
     "start": "npm run start -w server",
     "migrate": "npm run migrate -w server",
+    "reset-admin": "npm run reset-admin -w server --",
     "test": "npm test -w server",
     "test:e2e": "playwright test"
   },

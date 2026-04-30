@@ -9,6 +9,7 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "migrate": "node src/db/migrate.js",
+    "reset-admin": "node src/cli/reset-admin.js",
     "test": "vitest run"
   },
   "dependencies": {

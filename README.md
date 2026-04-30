@@ -10,6 +10,7 @@ API-first change management for small workshops. Node.js + React, local or Activ
 - [Quick start (Docker)](#quick-start-docker)
 - [Quick start (local development)](#quick-start-local-development)
 - [Default credentials](#default-credentials)
+- [Resetting the admin password](#resetting-the-admin-password)
 - [Repo layout](#repo-layout)
 - [Configuration](#configuration)
 - [Active Directory](#active-directory)
@@ -71,6 +72,33 @@ The Vite dev server proxies `/api/*` to the server, so a single `http://localhos
 ## Default credentials
 
 First login: **`admin` / `admin`**. The bootstrap admin is forced to change their password on first login (`must_change_password=1`). After that, manage all users through the admin UI.
+
+## Resetting the admin password
+
+If the admin password is lost or all admins get locked out, run the reset-admin CLI from the host. By design there is **no API equivalent** — recovery requires direct access to `data/cambiar.sqlite`, the same trust boundary as the database file itself.
+
+```bash
+# Local install
+npm run reset-admin                                # generates a strong random password and prints it
+npm run reset-admin -- --password 'MyNewPwd1234'   # set a specific password
+npm run reset-admin -- --username admin2           # reset (or create) admin2
+
+# Docker (running container)
+docker compose exec cambiar npm run reset-admin
+docker compose exec cambiar npm run reset-admin -- --password 'MyNewPwd1234'
+
+# Docker (one-shot, container not running)
+docker compose run --rm cambiar npm run reset-admin
+```
+
+What it does:
+
+- **User exists** → updates the password, sets `must_change_password=1`, sets `active=1`. Role is **not** changed.
+- **User doesn't exist** → creates them with `role=admin`, `must_change_password=1`, `active=1`.
+- **AD-sourced user** → refused (use AD password reset instead).
+- The user must change the password on first login.
+
+The script applies any pending migrations before doing the reset, so it's safe on a fresh install too.
 
 ## Repo layout
 
@@ -316,6 +344,7 @@ Tests run against an **in-memory SQLite** with a **per-test reset** (`resetDb()`
 | `test/branding.test.js` | public GET, admin-only writes, file-type allowlist, 1 MB cap, replace-deletes-old-file, clear flow |
 | `test/notifications.test.js` | recipients per event (approvers + admins on submit; submitter on approve/reject), per-channel event filtering |
 | `test/ad.test.js` | AD path with mocked ldapts: bind→search→re-bind, group→role mapping, attribute refresh on re-login, local-takes-precedence on collision, admin not downgraded by AD group mapping |
+| `test/resetAdmin.test.js` | reset existing → forces change; reactivates disabled; creates as admin if missing; preserves role on existing; refuses AD; generated password complexity; full rescue scenario when all admins are demoted |
 
 When adding or modifying an endpoint:
 
