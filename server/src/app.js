@@ -16,6 +16,8 @@ import digestsRouter from './routes/digests.js';
 import notesRouter from './routes/notes.js';
 import attachmentsRouter from './routes/attachments.js';
 import changeTemplatesRouter from './routes/changeTemplates.js';
+import emailRulesRouter from './routes/emailRules.js';
+import emailLogRouter from './routes/emailLog.js';
 
 /**
  * Build an Express app instance. Migrations and admin bootstrap are NOT
@@ -74,6 +76,8 @@ export function createApp({ httpLogger = true } = {}) {
   app.use('/api/changes/:changeId/attachments', attachmentsRouter);
   app.use('/api/change-templates', changeTemplatesRouter);
   app.use('/api/digests', digestsRouter);
+  app.use('/api/email-rules', emailRulesRouter);
+  app.use('/api/email-log', emailLogRouter);
 
   // Serve uploaded files (logos etc.) — no auth required because the logo is public branding.
   // fallthrough:false so missing files return 404 instead of falling into the SPA catch-all.

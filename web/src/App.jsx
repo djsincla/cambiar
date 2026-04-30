@@ -16,6 +16,7 @@ import ReleaseNotes from './pages/ReleaseNotes.jsx';
 import Upcoming from './pages/Upcoming.jsx';
 import Digests from './pages/Digests.jsx';
 import ChangeTemplates from './pages/ChangeTemplates.jsx';
+import EmailIngestion from './pages/EmailIngestion.jsx';
 import { useTheme } from './theme.jsx';
 
 export default function App() {
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/admin/change-types" element={<Protected admin><ChangeTypesAdmin /></Protected>} />
           <Route path="/admin/settings" element={<Protected admin><Settings /></Protected>} />
           <Route path="/admin/digests" element={<Protected admin><Digests /></Protected>} />
+          <Route path="/admin/email" element={<Protected admin><EmailIngestion /></Protected>} />
           <Route path="/templates" element={<Protected><ChangeTemplates /></Protected>} />
           <Route path="/release-notes" element={<Protected><ReleaseNotes /></Protected>} />
           <Route path="*" element={<Navigate to="/changes" replace />} />
@@ -105,6 +107,7 @@ function TopBar() {
             <NavLink to="/admin/groups" className={({ isActive }) => isActive ? 'active' : ''}>Groups</NavLink>
             <NavLink to="/admin/change-types" className={({ isActive }) => isActive ? 'active' : ''}>Change Types</NavLink>
             <NavLink to="/admin/digests" className={({ isActive }) => isActive ? 'active' : ''}>Digests</NavLink>
+            <NavLink to="/admin/email" className={({ isActive }) => isActive ? 'active' : ''}>Email</NavLink>
             <NavLink to="/admin/settings" className={({ isActive }) => isActive ? 'active' : ''}>Settings</NavLink>
           </>
         )}

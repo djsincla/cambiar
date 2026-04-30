@@ -21,18 +21,23 @@ export function resetDb() {
   db.exec(`
     DELETE FROM audit_log;
     DELETE FROM approvals;
+    DELETE FROM change_attachments;
+    DELETE FROM change_notes;
+    DELETE FROM email_log;
     DELETE FROM changes;
+    DELETE FROM change_templates;
     DELETE FROM change_type_approver_groups;
     DELETE FROM user_groups;
     DELETE FROM groups;
     DELETE FROM digest_schedules;
+    DELETE FROM email_rules;
     DELETE FROM users;
     -- Reset mutations on the seeded change_types catalog to its initial state.
     -- (We keep the rows themselves so tests don't have to reseed.)
     UPDATE change_types SET auto_approve = 0, active = 1;
   `);
   // Reset sequences for the wiped tables (but not change_types).
-  db.exec(`DELETE FROM sqlite_sequence WHERE name IN ('users', 'changes', 'approvals', 'audit_log', 'groups', 'digest_schedules')`);
+  db.exec(`DELETE FROM sqlite_sequence WHERE name IN ('users', 'changes', 'approvals', 'audit_log', 'groups', 'digest_schedules', 'change_notes', 'change_attachments', 'change_templates', 'email_rules', 'email_log')`);
 
   // Bootstrap admin (admin/admin, must change password) — same as runtime bootstrap.
   const hash = bcrypt.hashSync('admin', 4);

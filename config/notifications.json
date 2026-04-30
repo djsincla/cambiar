@@ -10,6 +10,17 @@
     },
     "events": ["submitted", "approved", "rejected", "implemented"]
   },
+  "incoming": {
+    "enabled": false,
+    "imap": {
+      "host": "imap.example.com",
+      "port": 993,
+      "secure": true,
+      "user": "changes@example.com",
+      "mailbox": "INBOX"
+    },
+    "pollIntervalSeconds": 60
+  },
   "sms": {
     "enabled": false,
     "adapter": "twilio",

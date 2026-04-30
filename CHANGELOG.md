@@ -4,6 +4,28 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.10.0] — 2026-04-30
+
+### Added
+- **Inbound email engine.** Cambiar can now ingest mail from a configured IMAP mailbox and turn each message into a change-management action. Use it to wire monitoring systems, ticket forwarders, or "reply [Cambiar #N] RESOLVED" workflows into the lifecycle.
+- **Three action types** per rule:
+  - `create_change` — open a fresh change (optionally instantiated from a template), with the email subject/body mapping to title/description, optional auto-submit (and auto-approve via the change type's flag).
+  - `transition` — extract a change id from the subject (default regex `\\[Cambiar #(\\d+)\\]`, which matches outbound notification subjects) and run a verb (`submit`/`approve`/`reject`/`start`/`implement`/`close`/`rollback`).
+  - `add_note` — append the email body as a markdown note on the referenced change.
+- **Rules** stored in DB, ordered by priority (lower = higher), matched on `from`/`subject` regex (case-insensitive). Highest-priority enabled rule wins; misses are logged but ignored.
+- **email_log** with the recent processed messages for debugging — every match, miss, and error visible to admin.
+- **Idempotency by Message-ID** — replays are skipped, so a flaky IMAP server retrying a fetch can't double-create.
+- **Synthetic `email-system` user** owns email-driven changes; audit rows on every affected change record `source: 'email'`, the `From`, `Subject`, `messageId`, and the matching `ruleId`. The actor is unambiguous in the history.
+- **Admin UI at `/admin/email`** — rules CRUD, action-config defaults, regex preview, "Poll now" button, and a live log viewer (refreshes every 30 s).
+- **Test rule** endpoint (`POST /api/email-rules/:id/test`) accepts a synthetic email payload and runs it through the full pipeline so admins can validate a rule before unleashing it on real mail.
+
+### Internal
+- Migration 009 adds `email_rules`, `email_log`, and bootstraps the `email-system` user (active=0, password-hash placeholder — login-blocked but available as an FK target for ingested rows).
+- New deps: `imapflow` (modern pure-JS IMAP client), `mailparser` (RFC-822 parser).
+- `services/emailRules.js` (CRUD + matching), `services/emailActions.js` (action executor + log writer), `services/emailPoller.js` (interval-driven IMAP poll, hot-startable from config).
+- 15 new server tests covering rule CRUD, regex validation, priority ordering, action execution for all three types, audit-row source tagging, error paths, and Message-ID dedupe.
+- 1 new Playwright spec for the admin UI.
+
 ## [0.9.0] — 2026-04-30
 
 ### Added
