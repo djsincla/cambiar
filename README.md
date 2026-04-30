@@ -236,6 +236,32 @@ submitter (own change)   → cannot approve their own change, ever
 
 `GET /api/changes/:id` includes a `requiredApprovalGroups` field so the UI can show "any one member of: \<groupA\>, \<groupB\>".
 
+**Standard changes (auto-approve)**
+
+A change type can be marked **auto-approve** ("standard change" in ITIL terms). Submissions of that type skip the approval gate entirely — `draft → submitted → approved` happens in a single transaction with the system as the actor for the auto-approve step. Field validation still runs at submit.
+
+Use auto-approve for routine, low-risk, well-understood work — planned reboots in a maintenance window, recurring patch jobs, scheduled backups. Anything that would otherwise create approver fatigue.
+
+- Mutually exclusive with approver groups (the API rejects setting both — they're conceptually contradictory).
+- Audit log shows two rows: the human `submit` and the `auto_approve` system action with `details: { reason: 'change type configured for auto-approval' }`.
+- Notifications: no "submitted" email is sent (no one needs to act); the submitter still gets the "approved" email so they know it cleared.
+- Flipping a type to auto-approve does **not** retroactively approve existing pending changes — only new submissions.
+
+**Approver inbox**
+
+The topbar shows an **Approvals** link with a count badge of changes currently waiting on the signed-in user. Clicking it opens a focused inbox view (`/changes?awaiting=true`) sorted oldest-first.
+
+The inbox eligibility predicate is the same one used for the "submitted" notification recipients, so what shows up in your inbox is exactly what gets you emailed:
+
+| You are… | Inbox shows |
+| --- | --- |
+| `admin` | All submitted changes (except your own) |
+| in approver group(s) | Submitted changes whose type lists any of your groups, except your own |
+| `approver` role + no groups | Submitted changes whose type has *no* approver groups assigned (legacy) |
+| plain `submitter` | Empty |
+
+The badge polls every 60 seconds and refreshes immediately on navigation between routes.
+
 ## Workflow states
 
 ```
@@ -282,18 +308,19 @@ The topbar exposes admin-only links once you log in as `admin`:
 ### Change types — `/api/change-types`
 - `GET /` — list active types (admins can pass `?includeInactive=true`)
 - `GET /:keyOrId` — by key or numeric id
-- `POST /` (admin) — create with `key`, `name`, `description`, `icon`, `fields[]`, `approverGroupIds[]`. Validates field schema (no duplicate keys, select fields require options, lowercase keys).
-- `PATCH /:id` (admin) — partial update; can deactivate via `active: false`
+- `POST /` (admin) — create with `key`, `name`, `description`, `icon`, `fields[]`, `approverGroupIds[]`, `autoApprove`. Validates field schema (no duplicate keys, select fields require options, lowercase keys). Rejects `autoApprove: true` together with non-empty `approverGroupIds` (mutual exclusion).
+- `PATCH /:id` (admin) — partial update; can deactivate via `active: false`; can toggle `autoApprove` (clears groups in the same patch if needed).
 - `DELETE /:id` (admin) — soft-deletes if records reference the type (`active=0`), hard-deletes otherwise
 
 ### Changes — `/api/changes`
 - `GET /` — list with optional `?status=&mine=true&type=`
-- `POST /` — create draft; rejects unknown fields per type schema is *lenient* on draft, strict on submit
-- `GET /:id` — change detail with `approvals[]`, `audit[]`, and `requiredApprovalGroups[]`
+- `GET /?awaitingMyApproval=true` — **inbox**: only changes the current user can approve right now (admin override + group eligibility + legacy approver fallback). Sorted oldest-first.
+- `POST /` — create draft; lenient field validation on draft, strict on submit
+- `GET /:id` — change detail with `approvals[]`, `audit[]`, `requiredApprovalGroups[]`, `changeType` (incl. `autoApprove`)
 - `PATCH /:id` — edit draft (only by submitter or admin, only if `status=draft`)
 - `DELETE /:id` — delete draft (only by submitter or admin, only if `status=draft`)
-- `POST /:id/submit` — strict field validation runs here
-- `POST /:id/approve` / `POST /:id/reject` — `{ comment? }`. Requires admin or membership of an assigned approver group
+- `POST /:id/submit` — strict field validation. **If the change type is auto-approve**, transitions straight to `approved` in a single transaction.
+- `POST /:id/approve` / `POST /:id/reject` — `{ comment? }`. Requires admin or membership of an assigned approver group.
 - `POST /:id/implement` / `POST /:id/close` — submitter or admin
 - `POST /:id/rollback` — `{ comment? }`. From `implemented` or `closed`.
 
@@ -345,6 +372,8 @@ Tests run against an **in-memory SQLite** with a **per-test reset** (`resetDb()`
 | `test/notifications.test.js` | recipients per event (approvers + admins on submit; submitter on approve/reject), per-channel event filtering |
 | `test/ad.test.js` | AD path with mocked ldapts: bind→search→re-bind, group→role mapping, attribute refresh on re-login, local-takes-precedence on collision, admin not downgraded by AD group mapping |
 | `test/resetAdmin.test.js` | reset existing → forces change; reactivates disabled; creates as admin if missing; preserves role on existing; refuses AD; generated password complexity; full rescue scenario when all admins are demoted |
+| `test/awaitingApproval.test.js` | the inbox-eligibility matrix: plain submitter empty, admin sees all-but-own, group-member sees own-group only, multi-group OR, legacy approver-role fallback only when no groups assigned, submitted-only state, oldest-first sort, deactivated types still listed, auto-approved types never reach inbox |
+| `test/autoApprove.test.js` | mark type auto-approve, mutual exclusion with approverGroupIds (create + patch), submit lands on approved with two audit rows (human submit + system auto_approve), implement/close still work, field validation still runs at submit, no retroactive approval when flag is flipped on existing submitted records |
 
 When adding or modifying an endpoint:
 
@@ -370,6 +399,7 @@ npx playwright install chromium
 | `e2e/auth.spec.js` | bootstrap admin/admin → forced password change → topbar branding → admin nav links → sign out |
 | `e2e/changes.spec.js` | admin creates a server-reboot change as a draft via the form, sees it in the list |
 | `e2e/admin.spec.js` | reaches each admin page (Users, Groups, Change Types, Settings) and exercises a basic interaction |
+| `e2e/approval.spec.js` | end-to-end approver flow (admin creates submitter, submitter signs in & submits, admin sees Approvals badge with count, opens inbox, approves, badge clears) and end-to-end auto-approve flow (admin marks type auto-approve, submission goes straight to approved with the auto-approve note in the policy panel) |
 
 ## Continuous integration
 

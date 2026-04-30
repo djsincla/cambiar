@@ -112,31 +112,31 @@ function CreateUserForm({ groups, onSubmit, pending }) {
       <div className="row" style={{ gap: 16 }}>
         <div style={{ flex: 1 }}>
           <label>Username</label>
-          <input value={f.username} onChange={e => setF({ ...f, username: e.target.value })} required />
+          <input aria-label="Username" value={f.username} onChange={e => setF({ ...f, username: e.target.value })} required />
         </div>
         <div style={{ flex: 1 }}>
           <label>Display name</label>
-          <input value={f.displayName} onChange={e => setF({ ...f, displayName: e.target.value })} />
+          <input aria-label="Display name" value={f.displayName} onChange={e => setF({ ...f, displayName: e.target.value })} />
         </div>
       </div>
       <div className="row" style={{ gap: 16 }}>
         <div style={{ flex: 1 }}>
           <label>Email</label>
-          <input type="email" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} />
+          <input aria-label="Email" type="email" value={f.email} onChange={e => setF({ ...f, email: e.target.value })} />
         </div>
         <div style={{ flex: 1 }}>
           <label>Phone (for SMS)</label>
-          <input value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} />
+          <input aria-label="Phone" value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} />
         </div>
       </div>
       <div className="row" style={{ gap: 16 }}>
         <div style={{ flex: 1 }}>
           <label>Initial password</label>
-          <input type="password" value={f.password} onChange={e => setF({ ...f, password: e.target.value })} required />
+          <input aria-label="Initial password" type="password" value={f.password} onChange={e => setF({ ...f, password: e.target.value })} required />
         </div>
         <div style={{ flex: 1 }}>
           <label>Role</label>
-          <select value={f.role} onChange={e => setF({ ...f, role: e.target.value })}>
+          <select aria-label="Role" value={f.role} onChange={e => setF({ ...f, role: e.target.value })}>
             <option value="submitter">submitter</option>
             <option value="approver">approver</option>
             <option value="admin">admin</option>

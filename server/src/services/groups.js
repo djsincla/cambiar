@@ -111,3 +111,87 @@ export function userCanApprove({ user, change, changeType }) {
     ? { allowed: true }
     : { allowed: false, reason: 'you are not a member of any approver group for this change type' };
 }
+
+/**
+ * Return the user IDs eligible to approve a change of a given type. Used by
+ * both the inbox query and the notification recipient list — same predicate
+ * everywhere, so what gets emailed matches what shows up in inboxes.
+ *
+ * Returned set always includes admins (override). For types with assigned
+ * approver groups, also includes group members. For types with NO assigned
+ * groups, falls back to the legacy 'approver' role.
+ *
+ * Excludes inactive users and the optional `excludeUserId` (typically the
+ * submitter).
+ */
+export function eligibleApproverIds({ changeTypeId, hasApproverGroups, excludeUserId = null }) {
+  const params = [];
+  const conditions = [`u.active = 1`];
+  if (excludeUserId != null) { conditions.push('u.id <> ?'); params.push(excludeUserId); }
+
+  const groupClause = hasApproverGroups
+    ? `EXISTS (
+         SELECT 1 FROM user_groups ug
+         JOIN change_type_approver_groups ctg ON ctg.group_id = ug.group_id
+         WHERE ug.user_id = u.id AND ctg.change_type_id = ?
+       )`
+    : `u.role = 'approver'`;
+  if (hasApproverGroups) params.push(changeTypeId);
+
+  const sql = `
+    SELECT DISTINCT u.id FROM users u
+    WHERE ${conditions.join(' AND ')}
+      AND (u.role = 'admin' OR ${groupClause})
+  `;
+  return db.prepare(sql).all(...params).map(r => r.id);
+}
+
+/**
+ * List of changes currently awaiting approval by `userId`. Returns full
+ * change rows ordered by submitted_at ASC (oldest first — queue semantics).
+ *
+ * Eligibility (same predicate as eligibleApproverIds):
+ *   - status = 'submitted'
+ *   - user is not the submitter
+ *   - user is admin (override), OR
+ *   - the change type has approver groups and user is in one, OR
+ *   - the change type has no groups and user has 'approver' role (legacy)
+ */
+export function awaitingApprovalChanges(user) {
+  // Admin override: everything submitted that isn't their own.
+  if (user.role === 'admin') {
+    return db.prepare(`
+      SELECT c.*, u.username AS submitter_username, u.display_name AS submitter_display_name
+      FROM changes c
+      JOIN users u ON u.id = c.submitter_id
+      WHERE c.status = 'submitted' AND c.submitter_id <> ?
+      ORDER BY COALESCE(c.submitted_at, c.updated_at) ASC, c.id ASC
+    `).all(user.id);
+  }
+
+  // Non-admin: union of (group-eligible) and (legacy approver-role on
+  // unassigned types). Single query with EXISTS keeps it tight.
+  return db.prepare(`
+    SELECT c.*, u.username AS submitter_username, u.display_name AS submitter_display_name
+    FROM changes c
+    JOIN users u ON u.id = c.submitter_id
+    JOIN change_types ct ON ct.key = c.type_key
+    WHERE c.status = 'submitted'
+      AND c.submitter_id <> ?
+      AND (
+        EXISTS (
+          SELECT 1 FROM user_groups ug
+          JOIN change_type_approver_groups ctg ON ctg.group_id = ug.group_id
+          WHERE ug.user_id = ? AND ctg.change_type_id = ct.id
+        )
+        OR (
+          ? = 'approver'
+          AND NOT EXISTS (
+            SELECT 1 FROM change_type_approver_groups ctg2
+            WHERE ctg2.change_type_id = ct.id
+          )
+        )
+      )
+    ORDER BY COALESCE(c.submitted_at, c.updated_at) ASC, c.id ASC
+  `).all(user.id, user.id, user.role);
+}

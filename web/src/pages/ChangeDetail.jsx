@@ -83,7 +83,12 @@ export default function ChangeDetail() {
 
       <div className="panel">
         <h2>Approval policy</h2>
-        {data.requiredApprovalGroups?.length ? (
+        {data.changeType?.autoApprove ? (
+          <div>
+            <span className="badge approved" style={{ marginRight: 8 }}>auto-approve</span>
+            This change type is configured for auto-approval — submissions go straight from <em>draft</em> to <em>approved</em>.
+          </div>
+        ) : data.requiredApprovalGroups?.length ? (
           <div>Any one member of: {data.requiredApprovalGroups.map(g => <span key={g.id} className="badge" style={{ marginRight: 6 }}>{g.name}</span>)}</div>
         ) : (
           <div className="muted">No approver groups configured for this type — admin or anyone with <code>approver</code> role can approve (legacy fallback).</div>

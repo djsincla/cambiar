@@ -26,6 +26,9 @@ export function resetDb() {
     DELETE FROM user_groups;
     DELETE FROM groups;
     DELETE FROM users;
+    -- Reset mutations on the seeded change_types catalog to its initial state.
+    -- (We keep the rows themselves so tests don't have to reseed.)
+    UPDATE change_types SET auto_approve = 0, active = 1;
   `);
   // Reset sequences for the wiped tables (but not change_types).
   db.exec(`DELETE FROM sqlite_sequence WHERE name IN ('users', 'changes', 'approvals', 'audit_log', 'groups')`);

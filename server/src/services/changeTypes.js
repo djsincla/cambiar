@@ -38,6 +38,7 @@ function rowToType(r, includeApproverGroups = true) {
     icon: r.icon,
     fields: r.fields_json ? JSON.parse(r.fields_json) : [],
     active: Boolean(r.active),
+    autoApprove: Boolean(r.auto_approve),
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -71,12 +72,12 @@ export function getChangeTypeById(id) {
   return r ? rowToType(r) : null;
 }
 
-export function createChangeType({ key, name, description, icon, fields, approverGroupIds }) {
+export function createChangeType({ key, name, description, icon, fields, approverGroupIds, autoApprove }) {
   const tx = db.transaction(() => {
     const info = db.prepare(`
-      INSERT INTO change_types (key, name, description, icon, fields_json, active)
-      VALUES (?, ?, ?, ?, ?, 1)
-    `).run(key, name, description ?? null, icon ?? null, JSON.stringify(fields ?? []));
+      INSERT INTO change_types (key, name, description, icon, fields_json, active, auto_approve)
+      VALUES (?, ?, ?, ?, ?, 1, ?)
+    `).run(key, name, description ?? null, icon ?? null, JSON.stringify(fields ?? []), autoApprove ? 1 : 0);
     if (Array.isArray(approverGroupIds) && approverGroupIds.length) {
       const ins = db.prepare('INSERT INTO change_type_approver_groups (change_type_id, group_id) VALUES (?, ?)');
       for (const gid of approverGroupIds) ins.run(info.lastInsertRowid, gid);
@@ -96,6 +97,7 @@ export function updateChangeType(id, patch) {
     for (const [k, col] of [['key','key'], ['name','name'], ['description','description'], ['icon','icon'], ['active','active']]) {
       if (k in patch) { sets.push(`${col} = ?`); params.push(k === 'active' ? (patch[k] ? 1 : 0) : patch[k]); }
     }
+    if ('autoApprove' in patch) { sets.push('auto_approve = ?'); params.push(patch.autoApprove ? 1 : 0); }
     if ('fields' in patch) {
       sets.push('fields_json = ?');
       params.push(JSON.stringify(patch.fields));

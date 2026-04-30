@@ -39,7 +39,15 @@ const createSchema = z.object({
   icon: z.string().max(64).optional().nullable(),
   fields: z.array(fieldSchema).default([]),
   approverGroupIds: z.array(z.number().int().positive()).optional(),
+  autoApprove: z.boolean().optional(),
 });
+
+function rejectAutoApproveWithGroups(autoApprove, approverGroupIds) {
+  if (autoApprove && Array.isArray(approverGroupIds) && approverGroupIds.length > 0) {
+    return 'autoApprove is mutually exclusive with approverGroupIds — auto-approved types skip the approval gate, so groups would never be consulted';
+  }
+  return null;
+}
 
 router.post('/', requireRole('admin'), (req, res) => {
   const parse = createSchema.safeParse(req.body);
@@ -52,6 +60,8 @@ router.post('/', requireRole('admin'), (req, res) => {
   if (db.prepare('SELECT id FROM change_types WHERE key = ?').get(parse.data.key)) {
     return res.status(409).json({ error: 'key already exists' });
   }
+  const conflict = rejectAutoApproveWithGroups(parse.data.autoApprove, parse.data.approverGroupIds);
+  if (conflict) return res.status(400).json({ error: conflict });
   if (parse.data.approverGroupIds?.length) {
     const found = db.prepare(`SELECT id FROM groups WHERE id IN (${parse.data.approverGroupIds.map(() => '?').join(',')})`)
       .all(...parse.data.approverGroupIds);
@@ -71,6 +81,7 @@ const patchSchema = z.object({
   fields: z.array(fieldSchema).optional(),
   active: z.boolean().optional(),
   approverGroupIds: z.array(z.number().int().positive()).optional(),
+  autoApprove: z.boolean().optional(),
 }).strict();
 
 router.patch('/:id', requireRole('admin'), (req, res) => {
@@ -90,6 +101,13 @@ router.patch('/:id', requireRole('admin'), (req, res) => {
       return res.status(409).json({ error: 'key already exists' });
     }
   }
+  // Effective post-patch values for the conflict check.
+  const effectiveAuto = 'autoApprove' in parse.data ? parse.data.autoApprove : existing.autoApprove;
+  const effectiveGroups = 'approverGroupIds' in parse.data
+    ? parse.data.approverGroupIds
+    : existing.approverGroups.map(g => g.id);
+  const conflict = rejectAutoApproveWithGroups(effectiveAuto, effectiveGroups);
+  if (conflict) return res.status(400).json({ error: conflict });
   if (parse.data.approverGroupIds?.length) {
     const found = db.prepare(`SELECT id FROM groups WHERE id IN (${parse.data.approverGroupIds.map(() => '?').join(',')})`)
       .all(...parse.data.approverGroupIds);

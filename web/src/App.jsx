@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate, NavLink, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './auth.jsx';
 import { useBranding } from './branding.jsx';
+import { api } from './api.js';
 import Login from './pages/Login.jsx';
 import ChangePassword from './pages/ChangePassword.jsx';
 import ChangeList from './pages/ChangeList.jsx';
@@ -59,6 +61,18 @@ function TopBar() {
   const { user, logout } = useAuth();
   const { appName, logoUrl } = useBranding();
   const nav = useNavigate();
+
+  // Poll every 60s for "awaiting my approval" count. Refetch on every mount
+  // (the default staleTime: 0) so a fresh login picks up the right count
+  // immediately rather than seeing the previous user's cached result.
+  // Key includes user.id so different users get separate caches.
+  const { data: awaiting } = useQuery({
+    queryKey: ['awaiting-my-approval', user.id],
+    queryFn: () => api.get('/api/changes?awaitingMyApproval=true'),
+    refetchInterval: 60_000,
+  });
+  const awaitingCount = awaiting?.changes?.length ?? 0;
+
   return (
     <header className="topbar">
       <div className="brand">
@@ -67,7 +81,11 @@ function TopBar() {
           : <span className="brand-text">{appName}</span>}
       </div>
       <nav>
-        <NavLink to="/changes" className={({ isActive }) => isActive ? 'active' : ''}>Changes</NavLink>
+        <NavLink to="/changes" end className={({ isActive }) => isActive ? 'active' : ''}>Changes</NavLink>
+        <NavLink to="/changes?awaiting=true" className="approvals-link">
+          Approvals
+          {awaitingCount > 0 && <span className="nav-badge" data-testid="awaiting-badge">{awaitingCount}</span>}
+        </NavLink>
         <NavLink to="/changes/new" className={({ isActive }) => isActive ? 'active' : ''}>New</NavLink>
         {user.role === 'admin' && (
           <>

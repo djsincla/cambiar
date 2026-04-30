@@ -3,6 +3,8 @@ import { logger } from '../logger.js';
 import { sendEmail, emailEnabled } from './email.js';
 import { sendSMS, smsEnabled } from './sms.js';
 import { db } from '../db/index.js';
+import { getChangeTypeByKey } from '../services/changeTypes.js';
+import { eligibleApproverIds } from '../services/groups.js';
 
 /**
  * Fire a notification for a change-record event.
@@ -39,10 +41,19 @@ function wantsChannel(channel, event) {
 
 function recipientsFor(event, change) {
   if (event === 'submitted') {
-    return db.prepare(`
-      SELECT id, email, phone, display_name FROM users
-      WHERE active = 1 AND role IN ('approver', 'admin')
-    `).all();
+    // Same eligibility predicate as the inbox query — anyone who could
+    // approve this change should be told it's waiting. Excludes the
+    // submitter (segregation of duties).
+    const ct = getChangeTypeByKey(change.type_key, { activeOnly: false });
+    if (!ct) return [];
+    const ids = eligibleApproverIds({
+      changeTypeId: ct.id,
+      hasApproverGroups: (ct.approverGroups ?? []).length > 0,
+      excludeUserId: change.submitter_id,
+    });
+    if (!ids.length) return [];
+    const placeholders = ids.map(() => '?').join(',');
+    return db.prepare(`SELECT id, email, phone, display_name FROM users WHERE id IN (${placeholders})`).all(...ids);
   }
   // approved/rejected/implemented/closed → notify submitter
   return db.prepare('SELECT id, email, phone, display_name FROM users WHERE id = ?').all(change.submitter_id);

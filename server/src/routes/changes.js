@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { requireAuth, requireRole, blockIfPasswordChangeRequired } from '../middleware/auth.js';
 import { validateFields, getChangeTypeByKey } from '../services/changeTypes.js';
-import { userCanApprove } from '../services/groups.js';
+import { userCanApprove, awaitingApprovalChanges } from '../services/groups.js';
 import { recordAudit, loadAudit } from '../services/audit.js';
 import { notify } from '../notifications/index.js';
 import { logger } from '../logger.js';
@@ -20,6 +20,12 @@ const createSchema = z.object({
 });
 
 router.get('/', (req, res) => {
+  // Inbox view: changes awaiting THIS user's approval, oldest first.
+  if (req.query.awaitingMyApproval === 'true') {
+    const rows = awaitingApprovalChanges(req.user);
+    return res.json({ changes: rows.map(formatChange) });
+  }
+
   const { status, mine, type } = req.query;
   const wheres = [];
   const params = [];
@@ -77,10 +83,16 @@ router.get('/:id', (req, res) => {
     approver: { id: a.approver_id, username: a.username, displayName: a.display_name },
   }));
   // Surface the approval policy for this change's type so the UI can render
-  // "any one of these groups must approve".
+  // "any one of these groups must approve" or "auto-approved".
   const changeType = getChangeTypeByKey(change.typeKey, { activeOnly: false });
   const requiredApprovalGroups = changeType?.approverGroups ?? [];
-  res.json({ change, approvals, audit: loadAudit(change.id), requiredApprovalGroups });
+  res.json({
+    change,
+    approvals,
+    audit: loadAudit(change.id),
+    requiredApprovalGroups,
+    changeType: changeType ? { id: changeType.id, key: changeType.key, name: changeType.name, autoApprove: changeType.autoApprove } : null,
+  });
 });
 
 const patchSchema = z.object({
@@ -142,10 +154,39 @@ router.post('/:id/submit', async (req, res) => {
   const v = validateFields(change.type_key, JSON.parse(change.fields_json));
   if (!v.ok) return res.status(400).json({ error: v.error });
 
-  transition(id, 'draft', 'submitted', req.user.id, 'submit');
-  const updated = getChange(id);
+  // Look up the type once to decide whether this is a standard (auto-approved)
+  // change. Field validation already ran against the same source.
+  const changeType = getChangeTypeByKey(change.type_key, { activeOnly: false });
+  const isAutoApprove = Boolean(changeType?.autoApprove);
+
+  if (isAutoApprove) {
+    // draft → submitted → approved, all in one transaction. Two audit rows
+    // make the policy decision visible to auditors.
+    const tx = db.transaction(() => {
+      db.prepare(`UPDATE changes SET status = 'submitted', submitted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND status = 'draft'`).run(id);
+      recordAudit({ changeId: id, userId: req.user.id, action: 'submit', fromStatus: 'draft', toStatus: 'submitted' });
+      db.prepare(`UPDATE changes SET status = 'approved', updated_at = datetime('now') WHERE id = ? AND status = 'submitted'`).run(id);
+      recordAudit({
+        changeId: id, userId: null /* system */, action: 'auto_approve',
+        fromStatus: 'submitted', toStatus: 'approved',
+        details: { reason: 'change type configured for auto-approval' },
+      });
+    });
+    tx();
+    // Skip the 'submitted' notification (no one needs to act). Tell the
+    // submitter their change cleared.
+    await notify('approved', { change: dbRow(id), actor: req.user });
+    return res.json({ change: getChange(id) });
+  }
+
+  // Normal flow.
+  const txNormal = db.transaction(() => {
+    db.prepare(`UPDATE changes SET status = 'submitted', submitted_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND status = 'draft'`).run(id);
+    recordAudit({ changeId: id, userId: req.user.id, action: 'submit', fromStatus: 'draft', toStatus: 'submitted' });
+  });
+  txNormal();
   await notify('submitted', { change: dbRow(id), actor: req.user });
-  res.json({ change: updated });
+  res.json({ change: getChange(id) });
 });
 
 const decisionSchema = z.object({ comment: z.string().max(2000).optional() });
@@ -257,6 +298,7 @@ function formatChange(r) {
     status: r.status,
     submitter: { id: r.submitter_id, username: r.submitter_username, displayName: r.submitter_display_name },
     scheduledAt: r.scheduled_at,
+    submittedAt: r.submitted_at,
     implementedAt: r.implemented_at,
     closedAt: r.closed_at,
     createdAt: r.created_at,

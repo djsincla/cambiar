@@ -42,7 +42,7 @@ export default function ChangeTypesAdmin() {
         <div className="panel" style={{ padding: 0 }}>
           <table>
             <thead>
-              <tr><th>Key</th><th>Name</th><th>Fields</th><th>Approver groups</th><th>Active</th><th></th></tr>
+              <tr><th>Key</th><th>Name</th><th>Fields</th><th>Approval</th><th>Active</th><th></th></tr>
             </thead>
             <tbody>
               {data.types.map(t => (
@@ -50,7 +50,13 @@ export default function ChangeTypesAdmin() {
                   <td><code>{t.key}</code></td>
                   <td>{t.name}</td>
                   <td>{t.fields.length}</td>
-                  <td>{t.approverGroups?.length ? t.approverGroups.map(g => g.name).join(', ') : <span className="muted">— legacy fallback —</span>}</td>
+                  <td>
+                    {t.autoApprove
+                      ? <span className="badge approved">auto-approve</span>
+                      : t.approverGroups?.length
+                        ? t.approverGroups.map(g => g.name).join(', ')
+                        : <span className="muted">— legacy fallback —</span>}
+                  </td>
                   <td>{t.active ? 'yes' : 'no'}</td>
                   <td className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
                     <button className="secondary" onClick={() => { setEditing(t.id); setErr(null); }}>Edit</button>
@@ -83,6 +89,7 @@ function TypeForm({ typeId, onClose, onSaved, onError }) {
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('');
   const [active, setActive] = useState(true);
+  const [autoApprove, setAutoApprove] = useState(false);
   const [fields, setFields] = useState([]);
   const [approverGroupIds, setApproverGroupIds] = useState([]);
   const [hydrated, setHydrated] = useState(isNew);
@@ -90,7 +97,7 @@ function TypeForm({ typeId, onClose, onSaved, onError }) {
   if (!hydrated && typeData?.type) {
     const t = typeData.type;
     setKey(t.key); setName(t.name); setDescription(t.description ?? '');
-    setIcon(t.icon ?? ''); setActive(t.active);
+    setIcon(t.icon ?? ''); setActive(t.active); setAutoApprove(Boolean(t.autoApprove));
     setFields(t.fields ?? []);
     setApproverGroupIds((t.approverGroups ?? []).map(g => g.id));
     setHydrated(true);
@@ -105,8 +112,8 @@ function TypeForm({ typeId, onClose, onSaved, onError }) {
   const submit = (e) => {
     e.preventDefault();
     const body = isNew
-      ? { key, name, description: description || null, icon: icon || null, fields, approverGroupIds }
-      : { name, description: description || null, icon: icon || null, fields, approverGroupIds, active };
+      ? { key, name, description: description || null, icon: icon || null, fields, approverGroupIds: autoApprove ? [] : approverGroupIds, autoApprove }
+      : { name, description: description || null, icon: icon || null, fields, approverGroupIds: autoApprove ? [] : approverGroupIds, autoApprove, active };
     if (isNew) body.key = key;
     save.mutate(body);
   };
@@ -149,22 +156,40 @@ function TypeForm({ typeId, onClose, onSaved, onError }) {
         </label>
       )}
 
-      <h2>Approver groups</h2>
-      <div className="muted" style={{ marginBottom: 8 }}>Any one member of any selected group can approve. Leave empty to fall back to the legacy "approver" role.</div>
-      <div style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
-        {groups.length === 0 && <span className="muted">No groups yet — create some on the Groups page first.</span>}
-        {groups.map(g => (
-          <label key={g.id} style={{ display: 'flex', gap: 8, margin: 0, padding: '4px 0', alignItems: 'center' }}>
-            <input
-              type="checkbox"
-              checked={approverGroupIds.includes(g.id)}
-              onChange={() => setApproverGroupIds(s => s.includes(g.id) ? s.filter(x => x !== g.id) : [...s, g.id])}
-              style={{ width: 'auto' }}
-            />
-            <span>{g.name} <span className="muted">({g.memberCount} members)</span></span>
-          </label>
-        ))}
-      </div>
+      <h2>Approval policy</h2>
+      <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', margin: '8px 0 12px' }}>
+        <input type="checkbox" aria-label="Auto-approve" checked={autoApprove} onChange={e => setAutoApprove(e.target.checked)} style={{ width: 'auto', marginTop: 4 }} />
+        <span>
+          <strong style={{ color: 'var(--text)' }}>Auto-approve (standard change)</strong>
+          <div className="muted" style={{ fontSize: 13 }}>
+            Skip the approval gate. Submissions go straight from <em>draft → approved</em> in one step. Use this for routine, low-risk, well-understood changes (planned reboots in a maintenance window, recurring patch jobs). Field validation still runs.
+          </div>
+        </span>
+      </label>
+
+      {!autoApprove && (
+        <>
+          <label>Approver groups</label>
+          <div className="muted" style={{ marginBottom: 8 }}>Any one member of any selected group can approve. Leave empty to fall back to the legacy "approver" role.</div>
+          <div style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
+            {groups.length === 0 && <span className="muted">No groups yet — create some on the Groups page first.</span>}
+            {groups.map(g => (
+              <label key={g.id} style={{ display: 'flex', gap: 8, margin: 0, padding: '4px 0', alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={approverGroupIds.includes(g.id)}
+                  onChange={() => setApproverGroupIds(s => s.includes(g.id) ? s.filter(x => x !== g.id) : [...s, g.id])}
+                  style={{ width: 'auto' }}
+                />
+                <span>{g.name} <span className="muted">({g.memberCount} members)</span></span>
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+      {autoApprove && (
+        <div className="banner">Approver groups are not consulted while auto-approve is on. They have been hidden but will be saved as empty.</div>
+      )}
 
       <h2>Fields</h2>
       <div className="muted" style={{ marginBottom: 8 }}>What information should be captured when someone creates a change of this type?</div>
