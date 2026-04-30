@@ -19,20 +19,26 @@ test('admin can create a digest schedule and see it listed', async ({ page }) =>
   await expect(page.getByRole('cell', { name: '0 18 * * *' })).toBeVisible();
 });
 
-test('upcoming view is reachable from the topbar with both list and calendar modes', async ({ page }) => {
+test('upcoming view: Month / Week / Day / List toggle works', async ({ page }) => {
   await adminLogin(page);
 
   await page.getByRole('link', { name: 'Upcoming', exact: true }).click();
   await expect(page).toHaveURL(/\/upcoming/);
   await expect(page.getByRole('heading', { name: 'Upcoming changes' })).toBeVisible();
 
-  // Default mode = list. Toggle to calendar.
-  await page.getByRole('button', { name: 'Calendar' }).click();
-  // The calendar grid renders weekday headers.
+  // Default = Month grid (weekday header row).
   await expect(page.locator('.cal-head').first()).toBeVisible();
 
-  // Toggle back.
+  // Week view → time-grid with hour rows.
+  await page.getByRole('button', { name: 'Week', exact: true }).click();
+  await expect(page.locator('.time-grid')).toBeVisible();
+  await expect(page.locator('.time-hour').first()).toBeVisible();
+
+  // Day view → still time-grid (single column).
+  await page.getByRole('button', { name: 'Day', exact: true }).click();
+  await expect(page.locator('.time-grid')).toBeVisible();
+
+  // List view → "Next 14 days" hint.
   await page.getByRole('button', { name: 'List', exact: true }).click();
-  // List mode shows the "Next 14 days" hint.
   await expect(page.getByText(/Next 14 days/)).toBeVisible();
 });

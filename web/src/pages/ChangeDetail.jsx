@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { statusLabel } from '../statuses.js';
+import { fmtDuration, variance } from '../duration.js';
 
 export default function ChangeDetail() {
   const { id } = useParams();
@@ -57,8 +58,9 @@ export default function ChangeDetail() {
           </tbody>
         </table>
 
-        {c.scheduledAt && <p className="muted">Scheduled: {c.scheduledAt}</p>}
       </div>
+
+      <SchedulePanel change={c} canEditActual={(c.viewerIsSubmitter || user.role === 'admin') && ['implemented', 'closed'].includes(c.status)} onChanged={() => qc.invalidateQueries({ queryKey: ['change', id] })} setErr={setErr} />
 
       <div className="panel">
         <h2>Actions</h2>
@@ -130,6 +132,82 @@ export default function ChangeDetail() {
  * user understands WHY there's no Approve button (or which one they should
  * press next).
  */
+function SchedulePanel({ change, canEditActual, onChanged, setErr }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(change.actualDurationMinutes ?? '');
+
+  const save = useMutation({
+    mutationFn: (body) => api.patch(`/api/changes/${change.id}/actual-duration`, body),
+    onSuccess: () => { setEditing(false); onChanged(); },
+    onError: (e) => setErr(e.message),
+  });
+
+  const v = variance({ planned: change.plannedDurationMinutes, actual: change.actualDurationMinutes });
+
+  return (
+    <div className="panel">
+      <h2>Schedule</h2>
+      <table>
+        <tbody>
+          <tr>
+            <td className="muted" style={{ width: 200 }}>Scheduled at</td>
+            <td>{change.scheduledAt ? change.scheduledAt.replace('T', ' ').slice(0, 16) : <span className="muted">— not scheduled —</span>}</td>
+          </tr>
+          <tr>
+            <td className="muted">Planned duration</td>
+            <td>{fmtDuration(change.plannedDurationMinutes) ?? <span className="muted">— not set —</span>}</td>
+          </tr>
+          {(change.actualDurationMinutes != null || canEditActual) && (
+            <tr>
+              <td className="muted">Actual duration</td>
+              <td className="row" style={{ gap: 12, alignItems: 'center' }}>
+                {editing ? (
+                  <>
+                    <input
+                      aria-label="Actual duration minutes"
+                      type="number" min={1} max={43200}
+                      value={val}
+                      onChange={e => setVal(e.target.value)}
+                      style={{ width: 120 }}
+                      placeholder="minutes"
+                    />
+                    <button onClick={() => save.mutate({ actualDurationMinutes: val === '' ? null : Number(val) })} disabled={save.isPending}>Save</button>
+                    <button className="secondary" onClick={() => { setEditing(false); setVal(change.actualDurationMinutes ?? ''); }}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <span>
+                      {fmtDuration(change.actualDurationMinutes) ?? <span className="muted">— not recorded —</span>}
+                    </span>
+                    {v && <span className={`badge ${v.tone === 'success' ? 'approved' : 'submitted'}`}>{v.label}</span>}
+                    {canEditActual && (
+                      <button className="secondary" onClick={() => setEditing(true)}>
+                        {change.actualDurationMinutes == null ? 'Record actual' : 'Edit'}
+                      </button>
+                    )}
+                  </>
+                )}
+              </td>
+            </tr>
+          )}
+          {change.implementedAt && (
+            <tr>
+              <td className="muted">Implemented at</td>
+              <td>{change.implementedAt}</td>
+            </tr>
+          )}
+          {change.closedAt && (
+            <tr>
+              <td className="muted">Closed at</td>
+              <td>{change.closedAt}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function WhyPanel({ change, requiredApprovalGroups, changeType, userRole }) {
   const { status, viewerIsSubmitter, viewerCanApprove } = change;
 

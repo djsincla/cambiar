@@ -13,6 +13,7 @@ export default function NewChange() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [plannedDurationMinutes, setPlannedDurationMinutes] = useState('');
   const [fields, setFields] = useState({});
   const [err, setErr] = useState(null);
 
@@ -33,6 +34,7 @@ export default function NewChange() {
       description: description || null,
       fields,
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+      plannedDurationMinutes: plannedDurationMinutes === '' ? null : Number(plannedDurationMinutes),
     });
   };
 
@@ -53,8 +55,19 @@ export default function NewChange() {
         <label>Description</label>
         <textarea aria-label="Description" value={description} onChange={e => setDescription(e.target.value)} />
 
-        <label>Scheduled at</label>
-        <input aria-label="Scheduled at" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+        <div className="row" style={{ gap: 16 }}>
+          <div style={{ flex: 1 }}>
+            <label>Scheduled at</label>
+            <input aria-label="Scheduled at" type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label>Planned duration (minutes)</label>
+            <input aria-label="Planned duration" type="number" min={1} max={43200} value={plannedDurationMinutes} onChange={e => setPlannedDurationMinutes(e.target.value)} placeholder="e.g. 60" />
+            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+              How long the implementation window is. Reflected as a sized block in the calendar week/day views.
+            </div>
+          </div>
+        </div>
 
         {type && (
           <>

@@ -18,6 +18,7 @@ const createSchema = z.object({
   description: z.string().max(10_000).optional().nullable(),
   fields: z.record(z.any()).optional(),
   scheduledAt: z.string().datetime().optional().nullable(),
+  plannedDurationMinutes: z.number().int().positive().max(60 * 24 * 30).optional().nullable(),
 });
 
 router.get('/', (req, res) => {
@@ -71,8 +72,8 @@ router.post('/', (req, res) => {
   const fieldsToStore = parse.data.fields ?? {};
 
   const info = db.prepare(`
-    INSERT INTO changes (type_key, title, description, fields_json, status, submitter_id, scheduled_at)
-    VALUES (?, ?, ?, ?, 'draft', ?, ?)
+    INSERT INTO changes (type_key, title, description, fields_json, status, submitter_id, scheduled_at, planned_duration_minutes)
+    VALUES (?, ?, ?, ?, 'draft', ?, ?, ?)
   `).run(
     parse.data.typeKey,
     parse.data.title,
@@ -80,6 +81,7 @@ router.post('/', (req, res) => {
     JSON.stringify(fieldsToStore),
     req.user.id,
     parse.data.scheduledAt ?? null,
+    parse.data.plannedDurationMinutes ?? null,
   );
 
   recordAudit({ changeId: info.lastInsertRowid, userId: req.user.id, action: 'create', toStatus: 'draft' });
@@ -123,6 +125,7 @@ const patchSchema = z.object({
   description: z.string().max(10_000).nullable().optional(),
   fields: z.record(z.any()).optional(),
   scheduledAt: z.string().datetime().nullable().optional(),
+  plannedDurationMinutes: z.number().int().positive().max(60 * 24 * 30).nullable().optional(),
 }).strict();
 
 router.patch('/:id', (req, res) => {
@@ -139,10 +142,11 @@ router.patch('/:id', (req, res) => {
 
   const sets = [];
   const params = [];
-  if ('title' in parse.data)        { sets.push('title = ?'); params.push(parse.data.title); }
-  if ('description' in parse.data)  { sets.push('description = ?'); params.push(parse.data.description); }
-  if ('fields' in parse.data)       { sets.push('fields_json = ?'); params.push(JSON.stringify(parse.data.fields ?? {})); }
-  if ('scheduledAt' in parse.data)  { sets.push('scheduled_at = ?'); params.push(parse.data.scheduledAt); }
+  if ('title' in parse.data)                  { sets.push('title = ?'); params.push(parse.data.title); }
+  if ('description' in parse.data)            { sets.push('description = ?'); params.push(parse.data.description); }
+  if ('fields' in parse.data)                 { sets.push('fields_json = ?'); params.push(JSON.stringify(parse.data.fields ?? {})); }
+  if ('scheduledAt' in parse.data)            { sets.push('scheduled_at = ?'); params.push(parse.data.scheduledAt); }
+  if ('plannedDurationMinutes' in parse.data) { sets.push('planned_duration_minutes = ?'); params.push(parse.data.plannedDurationMinutes); }
   if (!sets.length) return res.status(400).json({ error: 'nothing to update' });
 
   sets.push("updated_at = datetime('now')");
@@ -250,6 +254,10 @@ router.post('/:id/reject', async (req, res) => {
   res.json({ change: getChange(id) });
 });
 
+const implementSchema = z.object({
+  actualDurationMinutes: z.number().int().positive().max(60 * 24 * 30).optional(),
+}).strict();
+
 router.post('/:id/implement', async (req, res) => {
   const id = Number(req.params.id);
   const change = db.prepare('SELECT * FROM changes WHERE id = ?').get(id);
@@ -258,9 +266,51 @@ router.post('/:id/implement', async (req, res) => {
   if (change.submitter_id !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'only submitter or admin can mark implemented' });
   }
-  db.prepare(`UPDATE changes SET status = 'implemented', implemented_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`).run(id);
-  recordAudit({ changeId: id, userId: req.user.id, action: 'implement', fromStatus: 'approved', toStatus: 'implemented' });
+  const parse = implementSchema.safeParse(req.body ?? {});
+  if (!parse.success) return res.status(400).json({ error: 'invalid request', details: parse.error.flatten() });
+
+  const actual = parse.data.actualDurationMinutes;
+  if (actual != null) {
+    db.prepare(`UPDATE changes SET status = 'implemented', implemented_at = datetime('now'), actual_duration_minutes = ?, updated_at = datetime('now') WHERE id = ?`).run(actual, id);
+  } else {
+    db.prepare(`UPDATE changes SET status = 'implemented', implemented_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`).run(id);
+  }
+  recordAudit({
+    changeId: id, userId: req.user.id, action: 'implement',
+    fromStatus: 'approved', toStatus: 'implemented',
+    details: actual != null ? { actualDurationMinutes: actual } : null,
+  });
   await notify('implemented', { change: dbRow(id), actor: req.user });
+  res.json({ change: getChange(id) });
+});
+
+const actualDurationSchema = z.object({
+  actualDurationMinutes: z.number().int().positive().max(60 * 24 * 30).nullable(),
+}).strict();
+
+// Update (or clear) actual duration after the implementation window. Available
+// while the change is in 'implemented' or 'closed' (not 'rolled_back', since a
+// rolled-back change's "actual duration" stops being meaningful).
+router.patch('/:id/actual-duration', async (req, res) => {
+  const id = Number(req.params.id);
+  const change = db.prepare('SELECT * FROM changes WHERE id = ?').get(id);
+  if (!change) return res.status(404).json({ error: 'not found' });
+  if (!['implemented', 'closed'].includes(change.status)) {
+    return res.status(409).json({ error: 'actual duration can only be set on implemented or closed changes' });
+  }
+  if (change.submitter_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'only submitter or admin can update actual duration' });
+  }
+  const parse = actualDurationSchema.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ error: 'invalid request', details: parse.error.flatten() });
+
+  const prev = change.actual_duration_minutes;
+  db.prepare(`UPDATE changes SET actual_duration_minutes = ?, updated_at = datetime('now') WHERE id = ?`)
+    .run(parse.data.actualDurationMinutes, id);
+  recordAudit({
+    changeId: id, userId: req.user.id, action: 'set_actual_duration',
+    details: { from: prev, to: parse.data.actualDurationMinutes },
+  });
   res.json({ change: getChange(id) });
 });
 
@@ -321,6 +371,8 @@ function formatChange(r) {
     status: r.status,
     submitter: { id: r.submitter_id, username: r.submitter_username, displayName: r.submitter_display_name },
     scheduledAt: r.scheduled_at,
+    plannedDurationMinutes: r.planned_duration_minutes,
+    actualDurationMinutes: r.actual_duration_minutes,
     submittedAt: r.submitted_at,
     implementedAt: r.implemented_at,
     closedAt: r.closed_at,

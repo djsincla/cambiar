@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useState } from 'react';
 import { api } from '../api.js';
 import { statusLabel, STATUS_LABELS, viewerHint } from '../statuses.js';
+import { fmtDuration } from '../duration.js';
 
 export default function ChangeList() {
   const [searchParams, setSearchParams] = useSearchParams();
