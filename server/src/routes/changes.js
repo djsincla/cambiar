@@ -28,19 +28,33 @@ router.get('/', (req, res) => {
     return res.json({ changes: rows.map(formatChange) });
   }
 
-  const { status, mine, type } = req.query;
+  const { status, mine, type, scheduledFrom, scheduledTo } = req.query;
   const wheres = [];
   const params = [];
-  if (status) { wheres.push('c.status = ?'); params.push(String(status)); }
+  if (status) {
+    // Allow CSV: ?status=approved,implemented
+    const list = String(status).split(',').filter(Boolean);
+    if (list.length === 1) { wheres.push('c.status = ?'); params.push(list[0]); }
+    else if (list.length > 1) {
+      wheres.push(`c.status IN (${list.map(() => '?').join(',')})`);
+      params.push(...list);
+    }
+  }
   if (type)   { wheres.push('c.type_key = ?'); params.push(String(type)); }
   if (mine === 'true') { wheres.push('c.submitter_id = ?'); params.push(req.user.id); }
+  // Date range filters for the upcoming view (calendar / list).
+  if (scheduledFrom) { wheres.push('c.scheduled_at >= ?'); params.push(String(scheduledFrom)); }
+  if (scheduledTo)   { wheres.push('c.scheduled_at <= ?'); params.push(String(scheduledTo)); }
   const where = wheres.length ? `WHERE ${wheres.join(' AND ')}` : '';
+
+  // When a date range is supplied, sort by scheduled_at ASC (queue order).
+  const orderBy = (scheduledFrom || scheduledTo) ? 'c.scheduled_at ASC, c.id ASC' : 'c.id DESC';
 
   const rows = db.prepare(`
     SELECT c.*, u.username AS submitter_username, u.display_name AS submitter_display_name
     FROM changes c JOIN users u ON u.id = c.submitter_id
     ${where}
-    ORDER BY c.id DESC
+    ORDER BY ${orderBy}
     LIMIT 500
   `).all(...params);
   annotateChangesForViewer(rows, req.user);

@@ -8,6 +8,8 @@ export default function Settings() {
   const [name, setName] = useState(appName);
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [testTo, setTestTo] = useState('');
+  const [testResult, setTestResult] = useState(null);
 
   const onUpload = async (e) => {
     e.preventDefault();
@@ -52,10 +54,40 @@ export default function Settings() {
     finally { setBusy(false); }
   };
 
+  const sendTest = async (e) => {
+    e.preventDefault();
+    setTestResult(null); setBusy(true);
+    try {
+      const r = await api.post('/api/settings/email/test', { to: testTo });
+      setTestResult({ ok: true, message: `Sent. Check ${testTo}.` });
+    } catch (e) {
+      setTestResult({ ok: false, message: e.data?.error || e.message });
+    } finally { setBusy(false); }
+  };
+
   return (
     <>
       <h1>Settings</h1>
       {err && <div className="error">{err}</div>}
+
+      <div className="panel">
+        <h2>Email</h2>
+        <div className="muted" style={{ marginBottom: 8 }}>
+          Send a real test email through your configured SMTP transport. Use this to verify <code>config/notifications.json</code> and the <code>SMTP_PASSWORD</code> env var are correct before relying on workflow emails or scheduled digests.
+        </div>
+        <form onSubmit={sendTest} className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
+          <div style={{ flex: 1 }}>
+            <label>Send a test email to</label>
+            <input aria-label="Test recipient" type="email" value={testTo} onChange={e => setTestTo(e.target.value)} placeholder="you@your-workshop.com" required />
+          </div>
+          <button type="submit" disabled={busy || !testTo}>Send test email</button>
+        </form>
+        {testResult && (
+          <div style={{ marginTop: 8, color: testResult.ok ? 'var(--success)' : 'var(--danger)' }}>
+            {testResult.message}
+          </div>
+        )}
+      </div>
 
       <div className="panel">
         <h2>Branding</h2>

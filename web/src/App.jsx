@@ -13,6 +13,8 @@ import Groups from './pages/Groups.jsx';
 import ChangeTypesAdmin from './pages/ChangeTypesAdmin.jsx';
 import Settings from './pages/Settings.jsx';
 import ReleaseNotes from './pages/ReleaseNotes.jsx';
+import Upcoming from './pages/Upcoming.jsx';
+import Digests from './pages/Digests.jsx';
 import { useTheme } from './theme.jsx';
 
 export default function App() {
@@ -41,10 +43,12 @@ export default function App() {
           <Route path="/changes" element={<Protected><ChangeList /></Protected>} />
           <Route path="/changes/new" element={<Protected><NewChange /></Protected>} />
           <Route path="/changes/:id" element={<Protected><ChangeDetail /></Protected>} />
+          <Route path="/upcoming" element={<Protected><Upcoming /></Protected>} />
           <Route path="/admin/users" element={<Protected admin><Users /></Protected>} />
           <Route path="/admin/groups" element={<Protected admin><Groups /></Protected>} />
           <Route path="/admin/change-types" element={<Protected admin><ChangeTypesAdmin /></Protected>} />
           <Route path="/admin/settings" element={<Protected admin><Settings /></Protected>} />
+          <Route path="/admin/digests" element={<Protected admin><Digests /></Protected>} />
           <Route path="/release-notes" element={<Protected><ReleaseNotes /></Protected>} />
           <Route path="*" element={<Navigate to="/changes" replace />} />
         </Routes>
@@ -90,12 +94,14 @@ function TopBar() {
           Approvals
           {awaitingCount > 0 && <span className="nav-badge" data-testid="awaiting-badge">{awaitingCount}</span>}
         </NavLink>
+        <NavLink to="/upcoming" className={({ isActive }) => isActive ? 'active' : ''}>Upcoming</NavLink>
         <NavLink to="/changes/new" className={({ isActive }) => isActive ? 'active' : ''}>New</NavLink>
         {user.role === 'admin' && (
           <>
             <NavLink to="/admin/users" className={({ isActive }) => isActive ? 'active' : ''}>Users</NavLink>
             <NavLink to="/admin/groups" className={({ isActive }) => isActive ? 'active' : ''}>Groups</NavLink>
             <NavLink to="/admin/change-types" className={({ isActive }) => isActive ? 'active' : ''}>Change Types</NavLink>
+            <NavLink to="/admin/digests" className={({ isActive }) => isActive ? 'active' : ''}>Digests</NavLink>
             <NavLink to="/admin/settings" className={({ isActive }) => isActive ? 'active' : ''}>Settings</NavLink>
           </>
         )}

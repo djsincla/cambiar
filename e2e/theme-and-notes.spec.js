@@ -36,5 +36,5 @@ test('clicking the topbar version link opens release notes', async ({ page }) =>
   await expect(page).toHaveURL(/\/release-notes$/);
   await expect(page.getByRole('heading', { name: 'Release notes', level: 1 })).toBeVisible();
   await expect(page.locator('.markdown h2').first()).toBeVisible();
-  await expect(page.getByText(/Theme toggle/)).toBeVisible();
+  await expect(page.getByText(/Theme toggle/).first()).toBeVisible();
 });

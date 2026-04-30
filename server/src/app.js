@@ -12,6 +12,7 @@ import changesRouter from './routes/changes.js';
 import groupsRouter from './routes/groups.js';
 import settingsRouter from './routes/settings.js';
 import releaseNotesRouter from './routes/releaseNotes.js';
+import digestsRouter from './routes/digests.js';
 
 /**
  * Build an Express app instance. Migrations and admin bootstrap are NOT
@@ -63,6 +64,7 @@ export function createApp({ httpLogger = true } = {}) {
   app.use('/api/groups', groupsRouter);
   app.use('/api/change-types', changeTypesRouter);
   app.use('/api/changes', changesRouter);
+  app.use('/api/digests', digestsRouter);
 
   // Serve uploaded files (logos etc.) — no auth required because the logo is public branding.
   // fallthrough:false so missing files return 404 instead of falling into the SPA catch-all.

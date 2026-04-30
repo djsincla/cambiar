@@ -4,6 +4,18 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.6.0] — 2026-04-30
+
+### Added
+- **Upcoming view** at `/upcoming` (linked from the topbar) with two modes you toggle between: a **list** of changes scheduled in the next 14 days and a **calendar** month grid with prev/next navigation. Status checkbox filter is shared between modes. Status-colored chips in calendar cells; click any chip to open the change.
+- **Digest schedule engine** — admins create cron-driven email digests of upcoming changes. Each schedule has its own cron expression, time zone, lookahead window, status filter, and recipient list (mix of registered users and free-form emails). Backed by `node-cron`, runs in-process, hot-swaps schedules when admins edit, persists `last_run_at` / `last_sent_at` / `last_error` for visibility.
+- **`/admin/digests`** admin page: list / create / edit / disable / delete schedules with a **Send now** button per schedule for immediate testing.
+- **`/api/digests`** CRUD + `POST /api/digests/:id/run-now` endpoint. `GET /api/changes` now accepts `scheduledFrom`, `scheduledTo`, and CSV `status=foo,bar` filters and sorts by `scheduled_at` ASC when a date range is supplied.
+- **Send test email** button on the Settings page (admin-only) — fires a real SMTP send and surfaces success or the underlying error so admins can verify email config without faking a change.
+
+### Internal
+- 15 new server tests covering the digest CRUD endpoints, cron-validation, recipient resolution (user-IDs + free-form emails), email-disabled error path, no-recipients error path, last-run/last-sent persistence, and the upcoming date-range filter on `GET /api/changes`. 2 new Playwright E2E tests covering the upcoming view tab toggle and creating a digest schedule from the admin UI.
+
 ## [0.5.0] — 2026-04-30
 
 ### Added

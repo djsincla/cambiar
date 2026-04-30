@@ -85,4 +85,30 @@ router.delete('/branding/logo', requireRole('admin'), (_req, res) => {
   res.json(getBranding());
 });
 
+// Send a test email so admins can verify SMTP setup without faking a change.
+const testEmailSchema = z.object({
+  to: z.string().email(),
+});
+
+router.post('/email/test', requireRole('admin'), async (req, res) => {
+  const parse = testEmailSchema.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ error: 'invalid request', details: parse.error.flatten() });
+
+  const { sendEmail, emailEnabled } = await import('../notifications/email.js');
+  if (!emailEnabled()) {
+    return res.status(400).json({ ok: false, error: 'email channel is disabled in config/notifications.json' });
+  }
+  try {
+    await sendEmail({
+      to: parse.data.to,
+      subject: '[Cambiar] Test email',
+      text: 'This is a test email from Cambiar. If you got this, your SMTP configuration is working.',
+      html: '<p>This is a test email from <strong>Cambiar</strong>.</p><p>If you got this, your SMTP configuration is working.</p>',
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 export default router;
