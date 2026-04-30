@@ -30,7 +30,9 @@ ENV NODE_ENV=production \
 RUN groupadd -r cambiar && useradd -r -g cambiar -d /app cambiar
 
 COPY --from=server-build /app/node_modules ./node_modules
-COPY --from=server-build /app/server/node_modules ./server/node_modules
+# Note: npm workspaces hoist all deps into the root node_modules, so a separate
+# /app/server/node_modules typically doesn't exist. Node's module resolution
+# walks up from server/src/ and finds them at /app/node_modules.
 COPY package.json ./
 COPY server ./server
 COPY config ./config
