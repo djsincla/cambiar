@@ -7,6 +7,7 @@ import { statusLabel } from '../statuses.js';
 import { fmtDuration, variance } from '../duration.js';
 import Notes from '../components/Notes.jsx';
 import Attachments from '../components/Attachments.jsx';
+import RecurrencePanel from '../components/RecurrencePanel.jsx';
 
 export default function ChangeDetail() {
   const { id } = useParams();
@@ -57,6 +58,7 @@ export default function ChangeDetail() {
       </div>
       <div className="muted" style={{ marginBottom: 16 }}>
         {c.typeKey} · submitted by {c.submitter.displayName || c.submitter.username} · created {c.createdAt}
+        {data.parent && <> · <Link to={`/changes/${data.parent.id}`} className="badge approved" style={{ textDecoration: 'none' }}>Spawned from #{data.parent.id}: {data.parent.title}</Link></>}
       </div>
 
       <WhyPanel change={c} requiredApprovalGroups={data.requiredApprovalGroups ?? []} changeType={data.changeType} userRole={user.role} />
@@ -100,6 +102,13 @@ export default function ChangeDetail() {
           </div>
         )}
       </div>
+
+      <RecurrencePanel
+        change={c}
+        recurring={data.recurring}
+        onChanged={() => qc.invalidateQueries({ queryKey: ['change', id] })}
+        setErr={setErr}
+      />
 
       <Notes changeId={c.id} />
       <Attachments changeId={c.id} />

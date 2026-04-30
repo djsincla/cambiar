@@ -17,6 +17,7 @@ import Upcoming from './pages/Upcoming.jsx';
 import Digests from './pages/Digests.jsx';
 import ChangeTemplates from './pages/ChangeTemplates.jsx';
 import EmailIngestion from './pages/EmailIngestion.jsx';
+import Recurring from './pages/Recurring.jsx';
 import { useTheme } from './theme.jsx';
 
 export default function App() {
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/admin/digests" element={<Protected admin><Digests /></Protected>} />
           <Route path="/admin/email" element={<Protected admin><EmailIngestion /></Protected>} />
           <Route path="/templates" element={<Protected><ChangeTemplates /></Protected>} />
+          <Route path="/recurring" element={<Protected><Recurring /></Protected>} />
           <Route path="/release-notes" element={<Protected><ReleaseNotes /></Protected>} />
           <Route path="*" element={<Navigate to="/changes" replace />} />
         </Routes>
@@ -100,6 +102,7 @@ function TopBar() {
         </NavLink>
         <NavLink to="/upcoming" className={({ isActive }) => isActive ? 'active' : ''}>Upcoming</NavLink>
         <NavLink to="/templates" className={({ isActive }) => isActive ? 'active' : ''}>Templates</NavLink>
+        <NavLink to="/recurring" className={({ isActive }) => isActive ? 'active' : ''}>Recurring</NavLink>
         <NavLink to="/changes/new" className={({ isActive }) => isActive ? 'active' : ''}>New</NavLink>
         {user.role === 'admin' && (
           <>

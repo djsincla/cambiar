@@ -8,6 +8,11 @@ import { annotateChangesForViewer } from '../services/changes.js';
 import { recordAudit, loadAudit } from '../services/audit.js';
 import { notify } from '../notifications/index.js';
 import { logger } from '../logger.js';
+import {
+  setRecurrence, clearRecurrence, getRecurringParent, listRecurringParents,
+  listChildren, spawnChildFromParent, validateRecurrenceInput,
+} from '../services/recurringChanges.js';
+import { registerRecurringChange, unregisterRecurringChange } from '../services/recurringScheduler.js';
 
 const router = Router();
 router.use(requireAuth, blockIfPasswordChangeRequired);
@@ -33,6 +38,11 @@ router.get('/', (req, res) => {
     return res.json({ changes: rows.map(formatChange) });
   }
 
+  // Recurring-parents-only view ("/recurring" page).
+  if (req.query.recurring === 'parents') {
+    return res.json({ recurringParents: listRecurringParents() });
+  }
+
   const { status, mine, type, scheduledFrom, scheduledTo } = req.query;
   const wheres = [];
   const params = [];
@@ -50,6 +60,11 @@ router.get('/', (req, res) => {
   // Date range filters for the upcoming view (calendar / list).
   if (scheduledFrom) { wheres.push('c.scheduled_at >= ?'); params.push(String(scheduledFrom)); }
   if (scheduledTo)   { wheres.push('c.scheduled_at <= ?'); params.push(String(scheduledTo)); }
+  // Recurring parents are generators, not normal changes — exclude unless
+  // explicitly asked. (?includeRecurringParents=true to opt in.)
+  if (req.query.includeRecurringParents !== 'true') {
+    wheres.push('c.is_recurring_parent = 0');
+  }
   const where = wheres.length ? `WHERE ${wheres.join(' AND ')}` : '';
 
   // When a date range is supplied, sort by scheduled_at ASC (queue order).
@@ -156,12 +171,35 @@ router.get('/:id', (req, res) => {
   // "any one of these groups must approve" or "auto-approved".
   const changeType = getChangeTypeByKey(change.typeKey, { activeOnly: false });
   const requiredApprovalGroups = changeType?.approverGroups ?? [];
+
+  // Recurrence relationships — parent (if this is a child) and recent
+  // children (if this is a parent).
+  const rawForRecurrence = db.prepare(
+    'SELECT parent_change_id, is_recurring_parent, recurrence_cron, recurrence_timezone, recurrence_lead_minutes, recurrence_auto_submit, recurrence_enabled, recurrence_last_fired_at FROM changes WHERE id = ?'
+  ).get(change.id);
+  let parentRef = null;
+  if (rawForRecurrence?.parent_change_id) {
+    const p = db.prepare('SELECT id, title FROM changes WHERE id = ?').get(rawForRecurrence.parent_change_id);
+    if (p) parentRef = { id: p.id, title: p.title };
+  }
+  const recurringParent = rawForRecurrence?.is_recurring_parent ? {
+    cronExpression: rawForRecurrence.recurrence_cron,
+    timezone: rawForRecurrence.recurrence_timezone,
+    leadMinutes: rawForRecurrence.recurrence_lead_minutes,
+    autoSubmit: Boolean(rawForRecurrence.recurrence_auto_submit),
+    enabled: Boolean(rawForRecurrence.recurrence_enabled),
+    lastFiredAt: rawForRecurrence.recurrence_last_fired_at,
+    recentChildren: listChildren(change.id, { limit: 10 }),
+  } : null;
+
   res.json({
     change,
     approvals,
     audit: loadAudit(change.id),
     requiredApprovalGroups,
     changeType: changeType ? { id: changeType.id, key: changeType.key, name: changeType.name, autoApprove: changeType.autoApprove } : null,
+    parent: parentRef,
+    recurring: recurringParent,
   });
 });
 
@@ -467,5 +505,73 @@ function formatChange(r) {
     viewerCanApprove: Boolean(r.viewerCanApprove),
   };
 }
+
+// --- Recurring changes (parent → child) ---
+
+const recurrenceSchema = z.object({
+  cronExpression: z.string().min(1).max(120),
+  timezone: z.string().min(1).max(64).default('UTC'),
+  leadMinutes: z.number().int().min(0).max(525600).default(0),
+  autoSubmit: z.boolean().default(true),
+  enabled: z.boolean().default(true),
+});
+
+router.post('/:id/recurrence', (req, res) => {
+  const id = Number(req.params.id);
+  const change = db.prepare('SELECT * FROM changes WHERE id = ?').get(id);
+  if (!change) return res.status(404).json({ error: 'not found' });
+  if (change.submitter_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'only the submitter or an admin can configure recurrence' });
+  }
+  const parse = recurrenceSchema.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ error: 'invalid request', details: parse.error.flatten() });
+
+  const err = validateRecurrenceInput(parse.data);
+  if (err) return res.status(400).json({ error: err });
+
+  const updated = setRecurrence(id, parse.data);
+  recordAudit({
+    changeId: id, userId: req.user.id, action: 'set_recurrence',
+    details: parse.data,
+  });
+  registerRecurringChange(updated);
+  res.json({ recurring: {
+    cronExpression: updated.recurrenceCron,
+    timezone: updated.recurrenceTimezone,
+    leadMinutes: updated.recurrenceLeadMinutes,
+    autoSubmit: updated.recurrenceAutoSubmit,
+    enabled: updated.recurrenceEnabled,
+    lastFiredAt: updated.recurrenceLastFiredAt,
+  }});
+});
+
+router.delete('/:id/recurrence', (req, res) => {
+  const id = Number(req.params.id);
+  const change = db.prepare('SELECT * FROM changes WHERE id = ?').get(id);
+  if (!change) return res.status(404).json({ error: 'not found' });
+  if (change.submitter_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'only the submitter or an admin can clear recurrence' });
+  }
+  unregisterRecurringChange(id);
+  clearRecurrence(id);
+  recordAudit({ changeId: id, userId: req.user.id, action: 'clear_recurrence' });
+  res.json({ ok: true });
+});
+
+router.post('/:id/spawn-now', async (req, res) => {
+  const id = Number(req.params.id);
+  const parent = getRecurringParent(id);
+  if (!parent) return res.status(404).json({ error: 'not a recurring parent' });
+  if (parent.submitterId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'only the submitter or an admin can spawn manually' });
+  }
+  try {
+    const result = await spawnChildFromParent(parent);
+    res.json(result);
+  } catch (err) {
+    logger.error({ err: err.message, parentId: id }, 'manual spawn failed');
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;

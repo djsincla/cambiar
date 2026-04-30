@@ -4,6 +4,23 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.11.0] — 2026-04-30
+
+### Added
+- **Recurring changes.** A change can now be marked as a recurring **parent** that spawns **child** changes on a cron schedule. Each child has `parent_change_id` pointing back, copies the parent's blueprint (type, title, description, fields, planned duration), and flows through the normal lifecycle. Parents themselves don't run the lifecycle — they're generators. Composes with `auto_approve` change types and the existing approval workflow: cron fires → child created → optionally auto-submitted → optionally auto-approved.
+- **Recurrence config** per parent: cron expression, time zone, lead minutes (how far ahead to set the child's `scheduled_at` — 0 = "right now", 10080 = "one week ahead"), auto-submit flag, enabled flag.
+- **`POST /api/changes/:id/recurrence`** — set or update; **`DELETE /api/changes/:id/recurrence`** — clear (existing children untouched); **`POST /api/changes/:id/spawn-now`** — manual fire for testing.
+- **`GET /api/changes?recurring=parents`** returns the recurring-parents view; the default change list excludes parents (use `?includeRecurringParents=true` to opt in).
+- **`GET /api/changes/:id`** payload now includes `parent` (when this is a child) and `recurring` (when this is a parent, including a `recentChildren` list).
+- **Recurrence panel** on the change detail page: "Make recurring…" affordance for any change, then a read-only view with quick-pick cron presets, "Spawn now" button, and the recent children table. A child shows a "Spawned from #N" badge linking back to its parent.
+- **`/recurring` listing page** shows all recurring parents with cron / tz / lead / auto-submit / enabled / last fired / child count. Reachable from the topbar.
+
+### Internal
+- Migration 010 adds `parent_change_id`, `is_recurring_parent`, and the `recurrence_*` columns to the `changes` table.
+- `services/recurringChanges.js` — `setRecurrence`, `clearRecurrence`, `spawnChildFromParent`, `listRecurringParents`, `listChildren`. The spawn helper handles auto-submit + auto-approve in a single transaction so children are atomic.
+- `services/recurringScheduler.js` — node-cron-driven, hot-swap on PATCH, mirrors `digestScheduler.js`. Started/stopped from `index.js` next to digests and the email poller.
+- 16 new server tests for the lifecycle, spawn correctness, parent exclusion from default lists, payload shape, and cron validation. 1 new Playwright spec for "make recurring → spawn now → see in /recurring".
+
 ## [0.10.0] — 2026-04-30
 
 ### Added
