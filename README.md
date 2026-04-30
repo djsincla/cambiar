@@ -24,6 +24,8 @@ API-first change management for small workshops. Node.js + React, local or Activ
 - [Testing — the API contract](#testing--the-api-contract)
 - [End-to-end tests (Playwright)](#end-to-end-tests-playwright)
 - [Continuous integration](#continuous-integration)
+- [Release notes](#release-notes)
+- [Theme](#theme)
 - [License](#license)
 
 ## Features
@@ -400,6 +402,7 @@ npx playwright install chromium
 | `e2e/changes.spec.js` | admin creates a server-reboot change as a draft via the form, sees it in the list |
 | `e2e/admin.spec.js` | reaches each admin page (Users, Groups, Change Types, Settings) and exercises a basic interaction |
 | `e2e/approval.spec.js` | end-to-end approver flow (admin creates submitter, submitter signs in & submits, admin sees Approvals badge with count, opens inbox, approves, badge clears) and end-to-end auto-approve flow (admin marks type auto-approve, submission goes straight to approved with the auto-approve note in the policy panel) |
+| `e2e/theme-and-notes.spec.js` | theme toggle switches `data-theme`, persists across reload; release-notes page reachable from topbar and renders the changelog |
 
 ## Continuous integration
 
@@ -410,6 +413,14 @@ npx playwright install chromium
 3. **`docker`** — builds the production container
 
 Concurrency cancels in-progress runs on the same ref.
+
+## Release notes
+
+The full changelog lives in [CHANGELOG.md](CHANGELOG.md) and is also rendered inside the app at `/release-notes` (linked from the topbar) for any signed-in user.
+
+## Theme
+
+A light/dark toggle in the topbar. Default is dark; the choice persists per browser via `localStorage`. The whole UI is theme-driven via CSS custom properties — adding a new theme is a matter of adding a `[data-theme="..."]` block in `web/src/styles.css`.
 
 ## License
 

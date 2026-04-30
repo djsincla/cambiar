@@ -11,6 +11,7 @@ import changeTypesRouter from './routes/changeTypes.js';
 import changesRouter from './routes/changes.js';
 import groupsRouter from './routes/groups.js';
 import settingsRouter from './routes/settings.js';
+import releaseNotesRouter from './routes/releaseNotes.js';
 
 /**
  * Build an Express app instance. Migrations and admin bootstrap are NOT
@@ -57,6 +58,7 @@ export function createApp({ httpLogger = true } = {}) {
 
   app.use('/api/auth', authRouter);
   app.use('/api/settings', settingsRouter);
+  app.use('/api/release-notes', releaseNotesRouter);
   app.use('/api/users', usersRouter);
   app.use('/api/groups', groupsRouter);
   app.use('/api/change-types', changeTypesRouter);

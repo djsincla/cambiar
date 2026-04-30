@@ -12,6 +12,8 @@ import Users from './pages/Users.jsx';
 import Groups from './pages/Groups.jsx';
 import ChangeTypesAdmin from './pages/ChangeTypesAdmin.jsx';
 import Settings from './pages/Settings.jsx';
+import ReleaseNotes from './pages/ReleaseNotes.jsx';
+import { useTheme } from './theme.jsx';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -43,6 +45,7 @@ export default function App() {
           <Route path="/admin/groups" element={<Protected admin><Groups /></Protected>} />
           <Route path="/admin/change-types" element={<Protected admin><ChangeTypesAdmin /></Protected>} />
           <Route path="/admin/settings" element={<Protected admin><Settings /></Protected>} />
+          <Route path="/release-notes" element={<Protected><ReleaseNotes /></Protected>} />
           <Route path="*" element={<Navigate to="/changes" replace />} />
         </Routes>
       </main>
@@ -60,6 +63,7 @@ function Protected({ children, admin }) {
 function TopBar() {
   const { user, logout } = useAuth();
   const { appName, logoUrl } = useBranding();
+  const { theme, toggle: toggleTheme } = useTheme();
   const nav = useNavigate();
 
   // Poll every 60s for "awaiting my approval" count. Refetch on every mount
@@ -95,8 +99,18 @@ function TopBar() {
             <NavLink to="/admin/settings" className={({ isActive }) => isActive ? 'active' : ''}>Settings</NavLink>
           </>
         )}
+        <NavLink to="/release-notes" className={({ isActive }) => isActive ? 'active' : ''}>Release notes</NavLink>
       </nav>
       <div className="user">
+        <button
+          className="secondary"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          data-testid="theme-toggle"
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        </button>
         <span>{user.displayName || user.username}{user.role !== 'submitter' && ` · ${user.role}`}</span>
         <button className="secondary" onClick={async () => { await logout(); nav('/login'); }}>Sign out</button>
       </div>

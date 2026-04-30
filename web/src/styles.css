@@ -1,4 +1,5 @@
-:root {
+:root,
+[data-theme="dark"] {
   --bg: #0f1115;
   --panel: #1a1d23;
   --panel-2: #232730;
@@ -10,6 +11,21 @@
   --danger: #ff6b6b;
   --warning: #ffb84d;
   --success: #5dd39e;
+  --radius: 6px;
+}
+
+[data-theme="light"] {
+  --bg: #f7f7f9;
+  --panel: #ffffff;
+  --panel-2: #f0f1f4;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --border: #e1e3e8;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --danger: #dc2626;
+  --warning: #b45309;
+  --success: #047857;
   --radius: 6px;
 }
 
@@ -79,3 +95,13 @@ tbody tr:hover { background: var(--panel-2); }
 
 .nav-badge { display: inline-block; margin-left: 6px; background: var(--accent); color: white; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; }
 .approvals-link { display: inline-flex; align-items: center; }
+
+.markdown h1 { font-size: 22px; margin: 0 0 12px; }
+.markdown h2 { font-size: 17px; margin: 24px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.markdown h3 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.markdown p { margin: 8px 0; line-height: 1.6; }
+.markdown ul { margin: 8px 0 8px 20px; line-height: 1.6; }
+.markdown li { margin-bottom: 4px; }
+.markdown code { background: var(--panel-2); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+.markdown a { color: var(--accent); }
+.markdown a:hover { color: var(--accent-hover); }
