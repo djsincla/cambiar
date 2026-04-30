@@ -22,11 +22,20 @@ export function runMigrations() {
     if (applied.has(file)) continue;
     logger.info({ file }, 'applying migration');
     const sql = readFileSync(resolve(dir, file), 'utf8');
-    const tx = db.transaction(() => {
+
+    // Migrations that need to manage their own transactions (e.g. those that
+    // toggle PRAGMA foreign_keys, which can't be done inside a transaction)
+    // can opt out of the runner's wrapper by starting with `-- @no-tx`.
+    if (/^\s*--\s*@no-tx/m.test(sql)) {
       db.exec(sql);
       db.prepare('INSERT INTO migrations (id) VALUES (?)').run(file);
-    });
-    tx();
+    } else {
+      const tx = db.transaction(() => {
+        db.exec(sql);
+        db.prepare('INSERT INTO migrations (id) VALUES (?)').run(file);
+      });
+      tx();
+    }
   }
 }
 

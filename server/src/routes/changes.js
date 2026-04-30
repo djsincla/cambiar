@@ -258,18 +258,55 @@ const implementSchema = z.object({
   actualDurationMinutes: z.number().int().positive().max(60 * 24 * 30).optional(),
 }).strict();
 
+// Start the implementation window: approved → in_progress. Optional way to
+// reflect "we're hands-on right now" so the calendar / inbox / lists can
+// highlight in-flight work distinctly from "approved, scheduled for later".
+// Skipping this step is fine — implement still accepts the approved state.
+router.post('/:id/start', async (req, res) => {
+  const id = Number(req.params.id);
+  const change = db.prepare('SELECT * FROM changes WHERE id = ?').get(id);
+  if (!change) return res.status(404).json({ error: 'not found' });
+  if (change.status !== 'approved') return res.status(409).json({ error: 'only approved changes can be started' });
+  if (change.submitter_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'only submitter or admin can start implementation' });
+  }
+  db.prepare(`UPDATE changes SET status = 'in_progress', in_progress_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`).run(id);
+  recordAudit({ changeId: id, userId: req.user.id, action: 'start', fromStatus: 'approved', toStatus: 'in_progress' });
+  res.json({ change: getChange(id) });
+});
+
 router.post('/:id/implement', async (req, res) => {
   const id = Number(req.params.id);
   const change = db.prepare('SELECT * FROM changes WHERE id = ?').get(id);
   if (!change) return res.status(404).json({ error: 'not found' });
-  if (change.status !== 'approved') return res.status(409).json({ error: 'change must be approved first' });
+  // Both 'approved' (skipped /start) and 'in_progress' (started, now finishing) are valid predecessors.
+  if (!['approved', 'in_progress'].includes(change.status)) {
+    return res.status(409).json({ error: 'change must be approved or in progress first' });
+  }
   if (change.submitter_id !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'only submitter or admin can mark implemented' });
   }
   const parse = implementSchema.safeParse(req.body ?? {});
   if (!parse.success) return res.status(400).json({ error: 'invalid request', details: parse.error.flatten() });
 
-  const actual = parse.data.actualDurationMinutes;
+  // If the operator didn't supply an actual duration but we recorded
+  // in_progress_at, derive it from elapsed wall-clock time. SQLite's
+  // datetime('now') returns "YYYY-MM-DD HH:MM:SS" UTC — normalize to
+  // ISO-8601 before parsing.
+  const explicit = parse.data.actualDurationMinutes;
+  let actual = explicit;
+  let derived = false;
+  if (explicit == null && change.in_progress_at) {
+    const iso = change.in_progress_at.replace(' ', 'T') + 'Z';
+    const startedMs = Date.parse(iso);
+    if (Number.isFinite(startedMs)) {
+      const elapsed = Math.max(1, Math.round((Date.now() - startedMs) / 60_000));
+      actual = elapsed;
+      derived = true;
+    }
+  }
+
+  const fromStatus = change.status;
   if (actual != null) {
     db.prepare(`UPDATE changes SET status = 'implemented', implemented_at = datetime('now'), actual_duration_minutes = ?, updated_at = datetime('now') WHERE id = ?`).run(actual, id);
   } else {
@@ -277,8 +314,10 @@ router.post('/:id/implement', async (req, res) => {
   }
   recordAudit({
     changeId: id, userId: req.user.id, action: 'implement',
-    fromStatus: 'approved', toStatus: 'implemented',
-    details: actual != null ? { actualDurationMinutes: actual } : null,
+    fromStatus, toStatus: 'implemented',
+    details: actual != null
+      ? (derived ? { actualDurationMinutes: actual, derivedFromInProgressAt: true } : { actualDurationMinutes: actual })
+      : null,
   });
   await notify('implemented', { change: dbRow(id), actor: req.user });
   res.json({ change: getChange(id) });
@@ -332,8 +371,8 @@ router.post('/:id/rollback', async (req, res) => {
   const id = Number(req.params.id);
   const change = db.prepare('SELECT * FROM changes WHERE id = ?').get(id);
   if (!change) return res.status(404).json({ error: 'not found' });
-  if (!['implemented', 'closed'].includes(change.status)) {
-    return res.status(409).json({ error: 'only implemented or closed changes can be rolled back' });
+  if (!['in_progress', 'implemented', 'closed'].includes(change.status)) {
+    return res.status(409).json({ error: 'only in-progress, implemented, or closed changes can be rolled back' });
   }
   const { comment } = decisionSchema.parse(req.body ?? {});
   db.prepare(`UPDATE changes SET status = 'rolled_back', updated_at = datetime('now') WHERE id = ?`).run(id);
@@ -374,6 +413,7 @@ function formatChange(r) {
     plannedDurationMinutes: r.planned_duration_minutes,
     actualDurationMinutes: r.actual_duration_minutes,
     submittedAt: r.submitted_at,
+    inProgressAt: r.in_progress_at,
     implementedAt: r.implemented_at,
     closedAt: r.closed_at,
     createdAt: r.created_at,

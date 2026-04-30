@@ -77,8 +77,14 @@ export default function ChangeDetail() {
             <button onClick={() => action.mutate({ verb: 'approve', body: { comment } })}>Approve</button>
             <button className="danger" onClick={() => action.mutate({ verb: 'reject', body: { comment } })}>Reject</button>
           </>}
-          {c.status === 'approved' && (isOwner || user.role === 'admin') &&
-            <button onClick={() => action.mutate({ verb: 'implement' })}>Mark implemented</button>}
+          {c.status === 'approved' && (isOwner || user.role === 'admin') && <>
+            <button onClick={() => action.mutate({ verb: 'start' })}>Start implementation</button>
+            <button className="secondary" onClick={() => action.mutate({ verb: 'implement' })}>Skip · Mark implemented</button>
+          </>}
+          {c.status === 'in_progress' && (isOwner || user.role === 'admin') && <>
+            <button onClick={() => action.mutate({ verb: 'implement' })}>Mark implemented</button>
+            <button className="danger" onClick={() => action.mutate({ verb: 'rollback', body: { comment } })}>Roll back</button>
+          </>}
           {c.status === 'implemented' && (isOwner || user.role === 'admin') && <>
             <button onClick={() => action.mutate({ verb: 'close' })}>Close</button>
             <button className="secondary" onClick={() => action.mutate({ verb: 'rollback', body: { comment } })}>Roll back</button>
@@ -255,17 +261,27 @@ function WhyPanel({ change, requiredApprovalGroups, changeType, userRole }) {
     }
   } else if (status === 'approved') {
     if (viewerIsSubmitter) {
-      title = 'Approved — ready to implement';
-      body = <span>Once you’ve actually made the change in the field, press <strong>Mark implemented</strong>.</span>;
+      title = 'Approved — ready to start';
+      body = <span>Press <strong>Start implementation</strong> when the work begins; that lights up the calendar and lets the actual duration be derived from elapsed time. Or skip straight to <strong>Mark implemented</strong> if recording it after the fact.</span>;
       tone = 'attention';
     } else if (userRole === 'admin') {
       title = 'Approved';
-      body = <span>The submitter (or any admin) marks this implemented when the change is made.</span>;
+      body = <span>The submitter (or any admin) starts the implementation window or marks it implemented.</span>;
       tone = 'muted';
     } else {
       title = 'Approved';
-      body = <span>Waiting on the submitter to mark this implemented.</span>;
+      body = <span>Waiting on the submitter to start or finish the work.</span>;
       tone = 'muted';
+    }
+  } else if (status === 'in_progress') {
+    if (viewerIsSubmitter || userRole === 'admin') {
+      title = 'Implementation in progress';
+      body = <span>Work is happening right now. Press <strong>Mark implemented</strong> when done, or <strong>Roll back</strong> if it has to be aborted. If you don’t supply an actual duration, it’ll be derived from when implementation was started.</span>;
+      tone = 'attention';
+    } else {
+      title = 'Implementation in progress';
+      body = <span>{change.submitter.displayName || change.submitter.username} is implementing this change right now.</span>;
+      tone = 'attention';
     }
   } else if (status === 'implemented') {
     if (viewerIsSubmitter || userRole === 'admin') {

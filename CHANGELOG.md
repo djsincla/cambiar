@@ -4,6 +4,35 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.8.0] — 2026-04-30
+
+### Added
+- **`in_progress` status** — the missing state between `approved` and `implemented`. Surfaces "we're hands-on right now" distinctly from "approved, scheduled for next week". Lifecycle is now `draft → submitted → approved → in_progress → implemented → closed`, with `rejected` from `submitted` and `rolled_back` from `in_progress` / `implemented` / `closed`.
+- **`POST /api/changes/:id/start`** transitions `approved → in_progress`, recording `in_progress_at`. Skipping it is fine — `/implement` still accepts an `approved` change for retroactive recording.
+- **Auto-derived actual duration.** When `/implement` is called without an explicit `actualDurationMinutes` and `in_progress_at` was recorded, the server fills `actualDurationMinutes` from elapsed wall-clock time and notes `derivedFromInProgressAt: true` in the audit row.
+- **Calendar attention** for in-progress work: time-grid blocks and month chips render in a high-contrast warning palette; the detail-page badge gently pulses so it's obvious from a glance which work is live.
+- **WhyPanel** explains the new state in viewer-context terms: "Implementation in progress" with the right buttons surfaced (Mark implemented, Roll back) when the viewer can act, or who's currently on it when they can't.
+
+### Changed
+- `POST /api/changes/:id/implement` now accepts both `approved` and `in_progress` as the predecessor state.
+- `POST /api/changes/:id/rollback` now accepts `in_progress` (in addition to `implemented` and `closed`) — aborting work mid-flight is a real scenario.
+
+### Internal
+- Migration 007 rebuilds the `changes` table to extend the `status` CHECK constraint and adds the `in_progress_at` column. Migration runner gained an opt-out marker (`-- @no-tx`) so migrations that need to manage their own transactions (e.g. PRAGMA toggles) can do so without nesting.
+- 13 new server tests for the in_progress lifecycle. 1 new Playwright spec for the full `approve → start → implement` flow.
+
+## [0.7.0] — 2026-04-30
+
+### Added
+- **Planned and actual duration** on every change. `plannedDurationMinutes` is set at create or edit time; `actualDurationMinutes` is recordable when implementing or any time after (admin or submitter, while the change is `implemented` or `closed`). Detail view shows planned vs actual side-by-side with an inline "+/− over/under" variance label.
+- **Calendar Week and Day views.** The `/upcoming` page now toggles between **Month / Week / Day / List**. Week and Day are time-grid views: hours as rows, days as columns, blocks rendered with height proportional to the planned duration. Overlapping blocks stack side-by-side automatically.
+- **Calendar navigation** is view-aware. Prev / Next steps by month, week, or day depending on the active view. A **Today** button resets the anchor.
+- **Status-colored time blocks** in week/day views and an enriched chip in month view that shows start time + duration (e.g. `14:30 Reboot · 2h`).
+
+### Changed
+- `POST /api/changes/:id/implement` now accepts an optional `actualDurationMinutes` body. The audit row records it under `details`.
+- New endpoint `PATCH /api/changes/:id/actual-duration` for setting or clearing actual duration after implementation. Owner or admin only; rejected on draft/submitted/approved.
+
 ## [0.6.0] — 2026-04-30
 
 ### Added

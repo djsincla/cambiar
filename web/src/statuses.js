@@ -2,6 +2,7 @@ export const STATUS_LABELS = {
   draft: 'Draft',
   submitted: 'Awaiting approval',
   approved: 'Approved',
+  in_progress: 'In progress',
   rejected: 'Rejected',
   implemented: 'Implemented',
   closed: 'Closed',
@@ -27,7 +28,11 @@ export function viewerHint(change) {
     if (viewerIsSubmitter) return { text: 'your draft', tone: 'muted' };
   }
   if (status === 'approved' && viewerIsSubmitter) {
-    return { text: 'ready to implement', tone: 'attention' };
+    return { text: 'ready to start', tone: 'attention' };
+  }
+  if (status === 'in_progress') {
+    if (viewerIsSubmitter) return { text: 'in progress (yours)', tone: 'attention' };
+    return { text: 'in progress', tone: 'attention' };
   }
   if (status === 'implemented' && viewerIsSubmitter) {
     return { text: 'ready to close', tone: 'muted' };
