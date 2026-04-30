@@ -166,3 +166,29 @@ tbody tr:hover { background: var(--panel-2); }
 .time-block.closed      { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); }
 .time-block.rejected    { background: rgba(255,107,107,0.22); color: var(--danger); border: 1px solid var(--danger); }
 .time-block.rolled_back { background: rgba(255,107,107,0.22); color: var(--danger); border: 1px solid var(--danger); }
+
+/* Notes timeline */
+.note-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.note-item:last-child { border-bottom: none; }
+.note-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.note-meta .who { color: var(--text); font-weight: 600; }
+.note-body { line-height: 1.5; }
+.note-body .markdown p:first-child { margin-top: 0; }
+.note-body .markdown p:last-child { margin-bottom: 0; }
+.md-img { max-width: 100%; max-height: 360px; border-radius: 4px; margin: 6px 0; display: block; }
+
+/* Attachments gallery */
+.att-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.att-card { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.att-image-button { padding: 0; border: none; background: transparent; cursor: zoom-in; border-radius: 4px; overflow: hidden; }
+.att-thumb { width: 100%; height: 120px; object-fit: cover; display: block; background: var(--panel); border-radius: 4px; }
+.att-file { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 120px; justify-content: center; background: var(--panel); border-radius: 4px; text-decoration: none; color: var(--text); }
+.att-file-icon { font-size: 11px; font-weight: 600; padding: 4px 8px; background: var(--panel-2); border-radius: 4px; color: var(--muted); }
+.att-file-name { font-size: 11px; color: var(--text); word-break: break-all; padding: 0 6px; text-align: center; }
+.att-meta { font-size: 11px; min-width: 0; }
+.att-name { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+.att-actions { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+
+/* Lightbox for image previews */
+.lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; cursor: zoom-out; padding: 32px; }
+.lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; }

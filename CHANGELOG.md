@@ -4,6 +4,24 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.9.0] — 2026-04-30
+
+### Added
+- **Notes** on every change — a chronological timeline of markdown-formatted text entries. Anyone authed who can see the change can post; only the author or an admin can edit/delete. Markdown supports `**bold**`, `*italic*`, `` `code` ``, `[links](url)`, and `![alt](url)` images so notes can reference uploaded attachments inline.
+- **Attachments** on every change — file uploads (PNG, JPEG, SVG, WebP, GIF, PDF, plain-text, CSV, JSON; 10 MB cap). Image gallery with click-to-enlarge lightbox; non-image files render as cards with download links. Attachments live at `/uploads/changes/<id>/<filename>` so they can be referenced from notes.
+- **Change templates** — pre-filled blueprints for recurring kinds of work. New `/templates` page lists available templates; **Start a change** instantiates a draft from a template. Admins (and template creators) can edit or delete.
+- **Save as template** button on any change's detail page — captures the current title, description, type, fields, and planned duration as a reusable template. Notes and attachments are not copied (they're specific to the originating change).
+- **Copy as new change** button on any change's detail — opens the new-change form pre-filled from the existing change. The new draft is owned by the current user; notes and attachments are not copied.
+
+### Changed
+- `POST /api/changes` now accepts an optional `templateId` or `copyFromChangeId` to seed the create payload. Body fields override the seed where supplied. The audit row's `details` records the source.
+- `Markdown` component (used for the release-notes page and now notes) gained inline-image support (`![alt](url)`).
+
+### Internal
+- Migration 008 adds `change_notes`, `change_attachments`, and `change_templates`.
+- 18 new server tests across notes (CRUD + permissions), attachments (upload allowlist, size cap, ownership-on-delete), templates (CRUD + permissions), and create-from-template / copy-from-change paths.
+- 3 new Playwright specs covering note posting + render, save-as-template + start-from-template, and copy-as-new.
+
 ## [0.8.0] — 2026-04-30
 
 ### Added

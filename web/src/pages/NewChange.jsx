@@ -1,13 +1,28 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api.js';
 import FieldInput from '../components/FieldInput.jsx';
 
 export default function NewChange() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const templateId = searchParams.get('templateId');
+  const copyFrom = searchParams.get('copyFrom');
+
   const { data: typesData } = useQuery({ queryKey: ['types'], queryFn: () => api.get('/api/change-types') });
   const types = typesData?.types ?? [];
+
+  // Prefill source — either a template or another change. Read once on mount.
+  const { data: prefillSource } = useQuery({
+    queryKey: ['prefill-source', templateId ?? '', copyFrom ?? ''],
+    queryFn: async () => {
+      if (templateId) return { kind: 'template', data: (await api.get(`/api/change-templates/${templateId}`)).template };
+      if (copyFrom)   return { kind: 'change',   data: (await api.get(`/api/changes/${copyFrom}`)).change };
+      return null;
+    },
+    enabled: !!(templateId || copyFrom),
+  });
 
   const [typeKey, setTypeKey] = useState('');
   const [title, setTitle] = useState('');
@@ -16,6 +31,25 @@ export default function NewChange() {
   const [plannedDurationMinutes, setPlannedDurationMinutes] = useState('');
   const [fields, setFields] = useState({});
   const [err, setErr] = useState(null);
+  const [hydrated, setHydrated] = useState(!templateId && !copyFrom);
+
+  if (!hydrated && prefillSource) {
+    const s = prefillSource.data;
+    if (prefillSource.kind === 'template') {
+      setTypeKey(s.typeKey);
+      setTitle(s.title);
+      setDescription(s.bodyDescription ?? '');
+      setFields(s.fields ?? {});
+      setPlannedDurationMinutes(s.plannedDurationMinutes ?? '');
+    } else {
+      setTypeKey(s.typeKey);
+      setTitle(`Copy of ${s.title}`);
+      setDescription(s.description ?? '');
+      setFields(s.fields ?? {});
+      setPlannedDurationMinutes(s.plannedDurationMinutes ?? '');
+    }
+    setHydrated(true);
+  }
 
   const type = types.find(t => t.key === typeKey);
 
@@ -41,6 +75,13 @@ export default function NewChange() {
   return (
     <>
       <h1>New change</h1>
+      {(templateId || copyFrom) && prefillSource && (
+        <div className="banner" style={{ background: 'rgba(91,157,255,0.10)', borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+          {prefillSource.kind === 'template'
+            ? <>Pre-filled from template <strong>{prefillSource.data.name}</strong>. Edit anything below before saving.</>
+            : <>Copying from change <strong>#{prefillSource.data.id}</strong>. Notes and attachments are not copied.</>}
+        </div>
+      )}
       <form className="panel" onSubmit={onSubmit}>
         <label>Change type<span className="req"> *</span></label>
         <select aria-label="Change type" value={typeKey} onChange={e => { setTypeKey(e.target.value); setFields({}); }} required>

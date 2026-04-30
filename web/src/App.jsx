@@ -15,6 +15,7 @@ import Settings from './pages/Settings.jsx';
 import ReleaseNotes from './pages/ReleaseNotes.jsx';
 import Upcoming from './pages/Upcoming.jsx';
 import Digests from './pages/Digests.jsx';
+import ChangeTemplates from './pages/ChangeTemplates.jsx';
 import { useTheme } from './theme.jsx';
 
 export default function App() {
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="/admin/change-types" element={<Protected admin><ChangeTypesAdmin /></Protected>} />
           <Route path="/admin/settings" element={<Protected admin><Settings /></Protected>} />
           <Route path="/admin/digests" element={<Protected admin><Digests /></Protected>} />
+          <Route path="/templates" element={<Protected><ChangeTemplates /></Protected>} />
           <Route path="/release-notes" element={<Protected><ReleaseNotes /></Protected>} />
           <Route path="*" element={<Navigate to="/changes" replace />} />
         </Routes>
@@ -95,6 +97,7 @@ function TopBar() {
           {awaitingCount > 0 && <span className="nav-badge" data-testid="awaiting-badge">{awaitingCount}</span>}
         </NavLink>
         <NavLink to="/upcoming" className={({ isActive }) => isActive ? 'active' : ''}>Upcoming</NavLink>
+        <NavLink to="/templates" className={({ isActive }) => isActive ? 'active' : ''}>Templates</NavLink>
         <NavLink to="/changes/new" className={({ isActive }) => isActive ? 'active' : ''}>New</NavLink>
         {user.role === 'admin' && (
           <>

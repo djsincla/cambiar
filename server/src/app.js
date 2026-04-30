@@ -13,6 +13,9 @@ import groupsRouter from './routes/groups.js';
 import settingsRouter from './routes/settings.js';
 import releaseNotesRouter from './routes/releaseNotes.js';
 import digestsRouter from './routes/digests.js';
+import notesRouter from './routes/notes.js';
+import attachmentsRouter from './routes/attachments.js';
+import changeTemplatesRouter from './routes/changeTemplates.js';
 
 /**
  * Build an Express app instance. Migrations and admin bootstrap are NOT
@@ -53,7 +56,10 @@ export function createApp({ httpLogger = true } = {}) {
       'POST /api/changes',
       'GET  /api/changes/:id',
       'PATCH /api/changes/:id',
-      'POST /api/changes/:id/{submit,approve,reject,implement,close,rollback}',
+      'POST /api/changes/:id/{submit,approve,reject,start,implement,close,rollback}',
+      'GET/POST /api/changes/:id/notes, PATCH/DELETE /api/changes/:id/notes/:noteId',
+      'GET/POST /api/changes/:id/attachments, DELETE /api/changes/:id/attachments/:attId',
+      'GET/POST /api/change-templates, GET/PATCH/DELETE /api/change-templates/:id',
     ],
   }));
 
@@ -64,6 +70,9 @@ export function createApp({ httpLogger = true } = {}) {
   app.use('/api/groups', groupsRouter);
   app.use('/api/change-types', changeTypesRouter);
   app.use('/api/changes', changesRouter);
+  app.use('/api/changes/:changeId/notes', notesRouter);
+  app.use('/api/changes/:changeId/attachments', attachmentsRouter);
+  app.use('/api/change-templates', changeTemplatesRouter);
   app.use('/api/digests', digestsRouter);
 
   // Serve uploaded files (logos etc.) — no auth required because the logo is public branding.

@@ -18,6 +18,14 @@ function renderInline(text, keyPrefix) {
   };
 
   while (i < text.length) {
+    // Image: ![alt](url) — matched first so the leading ! isn't consumed by the link rule.
+    const imgM = tryMatch(/!\[([^\]]*)\]\(([^)]+)\)/y);
+    if (imgM) {
+      if (cursor < i) push(text.slice(cursor, i));
+      const [, alt, url] = imgM;
+      out.push(<img src={url} alt={alt} key={`${keyPrefix}-${key++}`} className="md-img" />);
+      i += imgM[0].length; cursor = i; continue;
+    }
     const linkM = tryMatch(/\[([^\]]+)\]\(([^)]+)\)/y);
     if (linkM) {
       if (cursor < i) push(text.slice(cursor, i));

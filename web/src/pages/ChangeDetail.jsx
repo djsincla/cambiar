@@ -1,17 +1,22 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
 import { statusLabel } from '../statuses.js';
 import { fmtDuration, variance } from '../duration.js';
+import Notes from '../components/Notes.jsx';
+import Attachments from '../components/Attachments.jsx';
 
 export default function ChangeDetail() {
   const { id } = useParams();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [comment, setComment] = useState('');
   const [err, setErr] = useState(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['change', id],
@@ -21,6 +26,20 @@ export default function ChangeDetail() {
   const action = useMutation({
     mutationFn: ({ verb, body }) => api.post(`/api/changes/${id}/${verb}`, body ?? {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['change', id] }),
+    onError: (e) => setErr(e.message),
+  });
+
+  const saveAsTemplate = useMutation({
+    mutationFn: () => api.post('/api/change-templates', {
+      name: templateName,
+      typeKey: data.change.typeKey,
+      title: data.change.title,
+      bodyDescription: data.change.description,
+      fields: data.change.fields,
+      plannedDurationMinutes: data.change.plannedDurationMinutes,
+      fromChangeId: Number(id),
+    }),
+    onSuccess: () => { setSavingTemplate(false); setTemplateName(''); nav('/templates'); },
     onError: (e) => setErr(e.message),
   });
 
@@ -61,6 +80,29 @@ export default function ChangeDetail() {
       </div>
 
       <SchedulePanel change={c} canEditActual={(c.viewerIsSubmitter || user.role === 'admin') && ['implemented', 'closed'].includes(c.status)} onChanged={() => qc.invalidateQueries({ queryKey: ['change', id] })} setErr={setErr} />
+
+      <div className="panel">
+        <h2>This change</h2>
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <button className="secondary" onClick={() => nav(`/changes/new?copyFrom=${c.id}`)}>Copy as new change</button>
+          {!savingTemplate && <button className="secondary" onClick={() => { setSavingTemplate(true); setTemplateName(`${c.title} (template)`); }}>Save as template</button>}
+        </div>
+        {savingTemplate && (
+          <div style={{ marginTop: 12 }}>
+            <label>Template name</label>
+            <input aria-label="Template name" value={templateName} onChange={e => setTemplateName(e.target.value)} required />
+            <div className="row" style={{ marginTop: 8, gap: 8 }}>
+              <button onClick={() => saveAsTemplate.mutate()} disabled={!templateName.trim() || saveAsTemplate.isPending}>
+                {saveAsTemplate.isPending ? 'Saving…' : 'Save template'}
+              </button>
+              <button className="secondary" onClick={() => { setSavingTemplate(false); setTemplateName(''); }}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Notes changeId={c.id} />
+      <Attachments changeId={c.id} />
 
       <div className="panel">
         <h2>Actions</h2>

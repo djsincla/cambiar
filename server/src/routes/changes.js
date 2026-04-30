@@ -13,12 +13,16 @@ const router = Router();
 router.use(requireAuth, blockIfPasswordChangeRequired);
 
 const createSchema = z.object({
-  typeKey: z.string().min(1),
-  title: z.string().min(1).max(255),
+  typeKey: z.string().min(1).optional(),
+  title: z.string().min(1).max(255).optional(),
   description: z.string().max(10_000).optional().nullable(),
   fields: z.record(z.any()).optional(),
   scheduledAt: z.string().datetime().optional().nullable(),
   plannedDurationMinutes: z.number().int().positive().max(60 * 24 * 30).optional().nullable(),
+  // Either copy fields from another change, or instantiate from a template.
+  // Body fields override the source where supplied.
+  copyFromChangeId: z.number().int().positive().optional(),
+  templateId: z.number().int().positive().optional(),
 });
 
 router.get('/', (req, res) => {
@@ -66,25 +70,66 @@ router.post('/', (req, res) => {
   const parse = createSchema.safeParse(req.body);
   if (!parse.success) return res.status(400).json({ error: 'invalid request', details: parse.error.flatten() });
 
-  const validated = validateFields(parse.data.typeKey, parse.data.fields ?? {});
-  // For drafts we *allow* incomplete fields, but type/select values still must be valid.
-  // We re-validate strictly on submit.
-  const fieldsToStore = parse.data.fields ?? {};
+  // Resolve seed values from a source (template or another change), then
+  // overlay any explicit body fields on top.
+  let seed = null;
+  let auditDetails = null;
+  if (parse.data.copyFromChangeId) {
+    const src = db.prepare('SELECT type_key, title, description, fields_json, planned_duration_minutes FROM changes WHERE id = ?').get(parse.data.copyFromChangeId);
+    if (!src) return res.status(400).json({ error: `copyFromChangeId ${parse.data.copyFromChangeId} does not exist` });
+    seed = {
+      typeKey: src.type_key,
+      title: `Copy of ${src.title}`,
+      description: src.description,
+      fields: src.fields_json ? JSON.parse(src.fields_json) : {},
+      plannedDurationMinutes: src.planned_duration_minutes,
+    };
+    auditDetails = { copiedFromChangeId: parse.data.copyFromChangeId };
+  }
+  if (parse.data.templateId) {
+    const t = db.prepare('SELECT type_key, title, body_description, fields_json, planned_duration_minutes FROM change_templates WHERE id = ?').get(parse.data.templateId);
+    if (!t) return res.status(400).json({ error: `templateId ${parse.data.templateId} does not exist` });
+    seed = {
+      typeKey: t.type_key,
+      title: t.title,
+      description: t.body_description,
+      fields: t.fields_json ? JSON.parse(t.fields_json) : {},
+      plannedDurationMinutes: t.planned_duration_minutes,
+    };
+    auditDetails = { fromTemplateId: parse.data.templateId };
+  }
+
+  // Body fields override seed values when supplied.
+  const typeKey = parse.data.typeKey ?? seed?.typeKey;
+  const title = parse.data.title ?? seed?.title;
+  const description = 'description' in parse.data ? parse.data.description : seed?.description;
+  const fields = parse.data.fields ?? seed?.fields ?? {};
+  const plannedDurationMinutes = 'plannedDurationMinutes' in parse.data
+    ? parse.data.plannedDurationMinutes
+    : seed?.plannedDurationMinutes;
+
+  if (!typeKey || !title) {
+    return res.status(400).json({ error: 'typeKey and title are required (either in the body or via templateId/copyFromChangeId)' });
+  }
 
   const info = db.prepare(`
     INSERT INTO changes (type_key, title, description, fields_json, status, submitter_id, scheduled_at, planned_duration_minutes)
     VALUES (?, ?, ?, ?, 'draft', ?, ?, ?)
   `).run(
-    parse.data.typeKey,
-    parse.data.title,
-    parse.data.description ?? null,
-    JSON.stringify(fieldsToStore),
+    typeKey,
+    title,
+    description ?? null,
+    JSON.stringify(fields),
     req.user.id,
     parse.data.scheduledAt ?? null,
-    parse.data.plannedDurationMinutes ?? null,
+    plannedDurationMinutes ?? null,
   );
 
-  recordAudit({ changeId: info.lastInsertRowid, userId: req.user.id, action: 'create', toStatus: 'draft' });
+  recordAudit({
+    changeId: info.lastInsertRowid, userId: req.user.id,
+    action: 'create', toStatus: 'draft',
+    details: auditDetails,
+  });
   res.status(201).json({ change: getChange(info.lastInsertRowid) });
 });
 
