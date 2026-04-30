@@ -1,9 +1,21 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { db } from '../db/index.js';
+import { config } from '../config.js';
 
 const DEFAULTS = {
   'branding.app_name': 'cambiar',
   'branding.logo_path': null,
 };
+
+// Read the project version once at startup. Cheap, doesn't need to be live —
+// version changes require a restart anyway.
+const VERSION = (() => {
+  try {
+    const pkg = JSON.parse(readFileSync(resolve(config.repoRoot, 'package.json'), 'utf8'));
+    return pkg.version ?? '0.0.0';
+  } catch { return '0.0.0'; }
+})();
 
 export function getSetting(key) {
   const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -27,5 +39,6 @@ export function getBranding() {
   return {
     appName: getSetting('branding.app_name') ?? 'cambiar',
     logoUrl: getSetting('branding.logo_path'),
+    version: VERSION,
   };
 }

@@ -4,6 +4,17 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.5.0] — 2026-04-30
+
+### Added
+- **Viewer-context hints** on the change list and detail pages: "awaiting you" / "awaiting others" / "your draft" / "ready to implement" labels next to each row's status, so it's obvious at a glance who needs to act. The `/api/changes` payloads now include `viewerCanApprove` and `viewerIsSubmitter` flags to power this.
+- **WhyPanel** on change detail explaining *why* the current viewer can or can't act ("You submitted this — someone else has to approve it", "Only members of NetEng can approve this type", etc.).
+- **Friendly status labels** in the UI — `submitted` reads as "Awaiting approval", `rolled_back` as "Rolled back", and so on. Status filter dropdown uses the same labels. (Underlying status values and CSS classes are unchanged.)
+
+### Changed
+- **Theme toggle** in the topbar is now a sun / moon icon, not a text label.
+- **Release notes link** in the topbar replaced by a clickable `vX.Y.Z` version pill on the right side; clicking it opens the release notes page.
+
 ## [0.4.0] — 2026-04-29
 
 ### Added

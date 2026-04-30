@@ -4,6 +4,7 @@ import { db } from '../db/index.js';
 import { requireAuth, requireRole, blockIfPasswordChangeRequired } from '../middleware/auth.js';
 import { validateFields, getChangeTypeByKey } from '../services/changeTypes.js';
 import { userCanApprove, awaitingApprovalChanges } from '../services/groups.js';
+import { annotateChangesForViewer } from '../services/changes.js';
 import { recordAudit, loadAudit } from '../services/audit.js';
 import { notify } from '../notifications/index.js';
 import { logger } from '../logger.js';
@@ -23,6 +24,7 @@ router.get('/', (req, res) => {
   // Inbox view: changes awaiting THIS user's approval, oldest first.
   if (req.query.awaitingMyApproval === 'true') {
     const rows = awaitingApprovalChanges(req.user);
+    annotateChangesForViewer(rows, req.user);
     return res.json({ changes: rows.map(formatChange) });
   }
 
@@ -41,6 +43,7 @@ router.get('/', (req, res) => {
     ORDER BY c.id DESC
     LIMIT 500
   `).all(...params);
+  annotateChangesForViewer(rows, req.user);
   res.json({ changes: rows.map(formatChange) });
 });
 
@@ -70,8 +73,14 @@ router.post('/', (req, res) => {
 });
 
 router.get('/:id', (req, res) => {
-  const change = getChange(Number(req.params.id));
-  if (!change) return res.status(404).json({ error: 'not found' });
+  const id = Number(req.params.id);
+  const raw = db.prepare(`
+    SELECT c.*, u.username AS submitter_username, u.display_name AS submitter_display_name
+    FROM changes c JOIN users u ON u.id = c.submitter_id WHERE c.id = ?
+  `).get(id);
+  if (!raw) return res.status(404).json({ error: 'not found' });
+  annotateChangesForViewer([raw], req.user);
+  const change = formatChange(raw);
   const approvals = db.prepare(`
     SELECT a.*, u.username, u.display_name FROM approvals a JOIN users u ON u.id = a.approver_id
     WHERE a.change_id = ? ORDER BY a.id ASC
@@ -303,6 +312,8 @@ function formatChange(r) {
     closedAt: r.closed_at,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    viewerIsSubmitter: Boolean(r.viewerIsSubmitter),
+    viewerCanApprove: Boolean(r.viewerCanApprove),
   };
 }
 

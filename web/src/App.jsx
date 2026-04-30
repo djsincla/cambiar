@@ -62,7 +62,7 @@ function Protected({ children, admin }) {
 
 function TopBar() {
   const { user, logout } = useAuth();
-  const { appName, logoUrl } = useBranding();
+  const { appName, logoUrl, version } = useBranding();
   const { theme, toggle: toggleTheme } = useTheme();
   const nav = useNavigate();
 
@@ -99,19 +99,21 @@ function TopBar() {
             <NavLink to="/admin/settings" className={({ isActive }) => isActive ? 'active' : ''}>Settings</NavLink>
           </>
         )}
-        <NavLink to="/release-notes" className={({ isActive }) => isActive ? 'active' : ''}>Release notes</NavLink>
       </nav>
       <div className="user">
         <button
-          className="secondary"
+          className="icon-button"
           onClick={toggleTheme}
           aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           data-testid="theme-toggle"
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          {theme === 'dark' ? '☀️' : '🌙'}
         </button>
         <span>{user.displayName || user.username}{user.role !== 'submitter' && ` · ${user.role}`}</span>
+        <NavLink to="/release-notes" className="version-link" data-testid="version-link" title="Release notes">
+          v{version}
+        </NavLink>
         <button className="secondary" onClick={async () => { await logout(); nav('/login'); }}>Sign out</button>
       </div>
     </header>

@@ -15,7 +15,7 @@ test('topbar shows the brand text when no logo is configured', async ({ page }) 
 test('admin sees admin nav links', async ({ page }) => {
   await adminLogin(page);
   for (const label of ['Users', 'Groups', 'Change Types', 'Settings']) {
-    await expect(page.getByRole('link', { name: label })).toBeVisible();
+    await expect(page.getByRole('link', { name: label, exact: true })).toBeVisible();
   }
 });
 

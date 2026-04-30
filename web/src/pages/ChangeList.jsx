@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useState } from 'react';
 import { api } from '../api.js';
+import { statusLabel, STATUS_LABELS, viewerHint } from '../statuses.js';
 
 export default function ChangeList() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -51,13 +52,9 @@ export default function ChangeList() {
               <label>Status</label>
               <select value={filter.status} onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}>
                 <option value="">All</option>
-                <option value="draft">Draft</option>
-                <option value="submitted">Submitted</option>
-                <option value="approved">Approved</option>
-                <option value="implemented">Implemented</option>
-                <option value="closed">Closed</option>
-                <option value="rejected">Rejected</option>
-                <option value="rolled_back">Rolled back</option>
+                {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
               </select>
             </div>
             <div style={{ paddingTop: 28 }}>
@@ -83,16 +80,22 @@ export default function ChangeList() {
                   {inbox ? 'No changes are waiting on you. Nice.' : 'No changes match.'}
                 </td></tr>
               )}
-              {data.changes.map(c => (
-                <tr key={c.id}>
-                  <td><Link to={`/changes/${c.id}`}>{c.id}</Link></td>
-                  <td><Link to={`/changes/${c.id}`}>{c.title}</Link></td>
-                  <td>{c.typeKey}</td>
-                  <td><span className={`badge ${c.status}`}>{c.status.replace('_', ' ')}</span></td>
-                  <td>{c.submitter.displayName || c.submitter.username}</td>
-                  <td className="muted">{inbox ? (c.submittedAt ?? c.updatedAt) : c.updatedAt}</td>
-                </tr>
-              ))}
+              {data.changes.map(c => {
+                const hint = viewerHint(c);
+                return (
+                  <tr key={c.id}>
+                    <td><Link to={`/changes/${c.id}`}>{c.id}</Link></td>
+                    <td><Link to={`/changes/${c.id}`}>{c.title}</Link></td>
+                    <td>{c.typeKey}</td>
+                    <td>
+                      <span className={`badge ${c.status}`}>{statusLabel(c.status)}</span>
+                      {hint && <span className={`viewer-hint ${hint.tone}`}>{hint.text}</span>}
+                    </td>
+                    <td>{c.submitter.displayName || c.submitter.username}</td>
+                    <td className="muted">{inbox ? (c.submittedAt ?? c.updatedAt) : c.updatedAt}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../auth.jsx';
+import { statusLabel } from '../statuses.js';
 
 export default function ChangeDetail() {
   const { id } = useParams();
@@ -25,17 +26,20 @@ export default function ChangeDetail() {
   if (isLoading || !data) return <div className="muted">Loading…</div>;
   const c = data.change;
   const isOwner = c.submitter.id === user.id;
-  const canApprove = ['admin', 'approver'].includes(user.role) && c.submitter.id !== user.id;
+  // Trust the server's eligibility check — it knows about groups + roles + auto-approve.
+  const canApprove = c.viewerCanApprove;
 
   return (
     <>
       <div className="row between">
         <h1>#{c.id} · {c.title}</h1>
-        <span className={`badge ${c.status}`}>{c.status.replace('_', ' ')}</span>
+        <span className={`badge ${c.status}`}>{statusLabel(c.status)}</span>
       </div>
       <div className="muted" style={{ marginBottom: 16 }}>
         {c.typeKey} · submitted by {c.submitter.displayName || c.submitter.username} · created {c.createdAt}
       </div>
+
+      <WhyPanel change={c} requiredApprovalGroups={data.requiredApprovalGroups ?? []} changeType={data.changeType} userRole={user.role} />
 
       {err && <div className="error">{err}</div>}
 
@@ -118,5 +122,101 @@ export default function ChangeDetail() {
         ))}
       </div>
     </>
+  );
+}
+
+/**
+ * Explains the current state of the change in viewer-context terms, so the
+ * user understands WHY there's no Approve button (or which one they should
+ * press next).
+ */
+function WhyPanel({ change, requiredApprovalGroups, changeType, userRole }) {
+  const { status, viewerIsSubmitter, viewerCanApprove } = change;
+
+  let title = '';
+  let body = null;
+  let tone = 'info';
+
+  if (status === 'draft') {
+    if (viewerIsSubmitter) {
+      title = 'This is your draft';
+      body = <span>Submit it for approval when you’re ready. Once submitted, only the approvers can move it forward.</span>;
+    } else {
+      title = `Draft owned by ${change.submitter.displayName || change.submitter.username}`;
+      body = <span>Drafts are private to their owner — only the submitter (or an admin) can edit or submit it.</span>;
+      tone = 'muted';
+    }
+  } else if (status === 'submitted') {
+    if (changeType?.autoApprove) {
+      title = 'Pending — but this should never sit here';
+      body = <span>This change type is set to auto-approve, so submissions normally bounce straight through to <em>approved</em>. If you’re seeing it stuck here, the auto-approve flag was flipped on after the fact — flip it off and approve manually, or contact an admin.</span>;
+      tone = 'warning';
+    } else if (viewerCanApprove) {
+      title = 'Awaiting your approval';
+      body = <span>Press <strong>Approve</strong> or <strong>Reject</strong> below. Add a comment if you want it on the audit log.</span>;
+      tone = 'attention';
+    } else if (viewerIsSubmitter) {
+      title = 'You submitted this — someone else has to approve it';
+      body = (
+        <span>
+          Cambiar enforces segregation of duties: a submitter can never approve their own change.
+          {requiredApprovalGroups.length > 0
+            ? <> Approval can come from any one member of: {requiredApprovalGroups.map(g => <span key={g.id} className="badge" style={{ marginLeft: 4 }}>{g.name}</span>)}, or any admin.</>
+            : <> Any admin{userRole === 'approver' ? ' or anyone with the legacy approver role' : ''} can approve this.</>}
+        </span>
+      );
+      tone = 'muted';
+    } else {
+      title = 'You can’t approve this change';
+      if (requiredApprovalGroups.length > 0) {
+        body = <span>Only members of {requiredApprovalGroups.map(g => <span key={g.id} className="badge" style={{ marginLeft: 4 }}>{g.name}</span>)} (or an admin) can approve. Ask an admin to add you to one of those groups if you should have access.</span>;
+      } else {
+        body = <span>This change type has no approver groups configured, so only an admin{userRole !== 'admin' ? ' or someone with the legacy approver role' : ''} can approve it.</span>;
+      }
+      tone = 'muted';
+    }
+  } else if (status === 'approved') {
+    if (viewerIsSubmitter) {
+      title = 'Approved — ready to implement';
+      body = <span>Once you’ve actually made the change in the field, press <strong>Mark implemented</strong>.</span>;
+      tone = 'attention';
+    } else if (userRole === 'admin') {
+      title = 'Approved';
+      body = <span>The submitter (or any admin) marks this implemented when the change is made.</span>;
+      tone = 'muted';
+    } else {
+      title = 'Approved';
+      body = <span>Waiting on the submitter to mark this implemented.</span>;
+      tone = 'muted';
+    }
+  } else if (status === 'implemented') {
+    if (viewerIsSubmitter || userRole === 'admin') {
+      title = 'Implemented — ready to close';
+      body = <span>If everything held, press <strong>Close</strong>. If something went sideways, press <strong>Roll back</strong>.</span>;
+    } else {
+      title = 'Implemented';
+      body = <span>Waiting on the submitter (or an admin) to close it out.</span>;
+      tone = 'muted';
+    }
+  } else if (status === 'closed') {
+    title = 'Closed';
+    body = <span>This change is complete. It can still be rolled back if something turns up later.</span>;
+    tone = 'muted';
+  } else if (status === 'rejected') {
+    title = 'Rejected';
+    body = <span>An approver declined this change. To try again, create a new draft.</span>;
+    tone = 'muted';
+  } else if (status === 'rolled_back') {
+    title = 'Rolled back';
+    body = <span>This change was rolled back after implementation.</span>;
+    tone = 'muted';
+  }
+
+  if (!title) return null;
+  return (
+    <div className={`panel why-panel ${tone}`}>
+      <strong>{title}</strong>
+      <div style={{ marginTop: 6 }}>{body}</div>
+    </div>
   );
 }
