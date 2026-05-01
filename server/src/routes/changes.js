@@ -13,6 +13,9 @@ import {
   listChildren, spawnChildFromParent, validateRecurrenceInput,
 } from '../services/recurringChanges.js';
 import { registerRecurringChange, unregisterRecurringChange } from '../services/recurringScheduler.js';
+import {
+  addLink, removeLink, getLink, getLinksForChange, getBlockingDeps, LINK_KINDS,
+} from '../services/changeLinks.js';
 
 const router = Router();
 router.use(requireAuth, blockIfPasswordChangeRequired);
@@ -200,6 +203,7 @@ router.get('/:id', (req, res) => {
     changeType: changeType ? { id: changeType.id, key: changeType.key, name: changeType.name, autoApprove: changeType.autoApprove } : null,
     parent: parentRef,
     recurring: recurringParent,
+    links: getLinksForChange(change.id),
   });
 });
 
@@ -353,6 +357,13 @@ router.post('/:id/start', async (req, res) => {
   if (change.submitter_id !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'only submitter or admin can start implementation' });
   }
+  const blocking = getBlockingDeps(id);
+  if (blocking.length > 0) {
+    return res.status(409).json({
+      error: 'blocked by unfinished prerequisite change(s)',
+      blockedBy: blocking,
+    });
+  }
   db.prepare(`UPDATE changes SET status = 'in_progress', in_progress_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`).run(id);
   recordAudit({ changeId: id, userId: req.user.id, action: 'start', fromStatus: 'approved', toStatus: 'in_progress' });
   res.json({ change: getChange(id) });
@@ -368,6 +379,16 @@ router.post('/:id/implement', async (req, res) => {
   }
   if (change.submitter_id !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'only submitter or admin can mark implemented' });
+  }
+  // Same dep gate as /start — we want callers who skip /start to hit it here.
+  // If we're already in_progress the deps were checked at start time; re-check
+  // anyway in case a prereq was rolled back in the meantime.
+  const blocking = getBlockingDeps(id);
+  if (blocking.length > 0) {
+    return res.status(409).json({
+      error: 'blocked by unfinished prerequisite change(s)',
+      blockedBy: blocking,
+    });
   }
   const parse = implementSchema.safeParse(req.body ?? {});
   if (!parse.success) return res.status(400).json({ error: 'invalid request', details: parse.error.flatten() });
@@ -505,6 +526,68 @@ function formatChange(r) {
     viewerCanApprove: Boolean(r.viewerCanApprove),
   };
 }
+
+// --- Change links (depends_on / relates_to) ---
+
+const linkSchema = z.object({
+  toChangeId: z.number().int().positive(),
+  kind: z.enum(LINK_KINDS),
+});
+
+router.post('/:id/links', (req, res) => {
+  const id = Number(req.params.id);
+  const change = db.prepare('SELECT submitter_id FROM changes WHERE id = ?').get(id);
+  if (!change) return res.status(404).json({ error: 'not found' });
+  if (change.submitter_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'only the submitter or an admin can link this change' });
+  }
+  const parse = linkSchema.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ error: 'invalid request', details: parse.error.flatten() });
+
+  try {
+    const { id: linkId } = addLink({
+      fromChangeId: id,
+      toChangeId: parse.data.toChangeId,
+      kind: parse.data.kind,
+      userId: req.user.id,
+    });
+    recordAudit({
+      changeId: id, userId: req.user.id, action: 'add_link',
+      details: { toChangeId: parse.data.toChangeId, kind: parse.data.kind, linkId },
+    });
+    res.status(201).json({ links: getLinksForChange(id) });
+  } catch (err) {
+    if (err.code === 'self_link' || err.code === 'cycle' || err.code === 'duplicate' || err.code === 'invalid_kind') {
+      return res.status(409).json({ error: err.message });
+    }
+    if (err.code === 'not_found') {
+      return res.status(400).json({ error: err.message });
+    }
+    throw err;
+  }
+});
+
+router.delete('/:id/links/:linkId', (req, res) => {
+  const id = Number(req.params.id);
+  const linkId = Number(req.params.linkId);
+  const change = db.prepare('SELECT submitter_id FROM changes WHERE id = ?').get(id);
+  if (!change) return res.status(404).json({ error: 'not found' });
+  if (change.submitter_id !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'only the submitter or an admin can remove a link' });
+  }
+  // Verify the link actually touches this change (so /api/changes/A/links/X
+  // can't delete a link belonging to change B).
+  const link = getLink(linkId);
+  if (!link || (link.from_change_id !== id && link.to_change_id !== id)) {
+    return res.status(404).json({ error: 'link not found' });
+  }
+  removeLink(linkId);
+  recordAudit({
+    changeId: id, userId: req.user.id, action: 'remove_link',
+    details: { linkId, kind: link.kind, otherChangeId: link.from_change_id === id ? link.to_change_id : link.from_change_id },
+  });
+  res.json({ links: getLinksForChange(id) });
+});
 
 // --- Recurring changes (parent → child) ---
 

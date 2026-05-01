@@ -8,6 +8,7 @@ import { fmtDuration, variance } from '../duration.js';
 import Notes from '../components/Notes.jsx';
 import Attachments from '../components/Attachments.jsx';
 import RecurrencePanel from '../components/RecurrencePanel.jsx';
+import LinksPanel from '../components/LinksPanel.jsx';
 
 export default function ChangeDetail() {
   const { id } = useParams();
@@ -49,6 +50,11 @@ export default function ChangeDetail() {
   const isOwner = c.submitter.id === user.id;
   // Trust the server's eligibility check — it knows about groups + roles + auto-approve.
   const canApprove = c.viewerCanApprove;
+  const blockedBy = data.links?.blockedBy ?? [];
+  const isBlocked = blockedBy.length > 0;
+  const blockedTitle = isBlocked
+    ? `Blocked by: ${blockedBy.map(b => `#${b.id} ${b.title}`).join(', ')}`
+    : undefined;
 
   return (
     <>
@@ -110,6 +116,13 @@ export default function ChangeDetail() {
         setErr={setErr}
       />
 
+      <LinksPanel
+        change={c}
+        links={data.links}
+        onChanged={() => qc.invalidateQueries({ queryKey: ['change', id] })}
+        setErr={setErr}
+      />
+
       <Notes changeId={c.id} />
       <Attachments changeId={c.id} />
 
@@ -129,11 +142,11 @@ export default function ChangeDetail() {
             <button className="danger" onClick={() => action.mutate({ verb: 'reject', body: { comment } })}>Reject</button>
           </>}
           {c.status === 'approved' && (isOwner || user.role === 'admin') && <>
-            <button onClick={() => action.mutate({ verb: 'start' })}>Start implementation</button>
-            <button className="secondary" onClick={() => action.mutate({ verb: 'implement' })}>Skip · Mark implemented</button>
+            <button onClick={() => action.mutate({ verb: 'start' })} disabled={isBlocked} title={blockedTitle}>Start implementation</button>
+            <button className="secondary" onClick={() => action.mutate({ verb: 'implement' })} disabled={isBlocked} title={blockedTitle}>Skip · Mark implemented</button>
           </>}
           {c.status === 'in_progress' && (isOwner || user.role === 'admin') && <>
-            <button onClick={() => action.mutate({ verb: 'implement' })}>Mark implemented</button>
+            <button onClick={() => action.mutate({ verb: 'implement' })} disabled={isBlocked} title={blockedTitle}>Mark implemented</button>
             <button className="danger" onClick={() => action.mutate({ verb: 'rollback', body: { comment } })}>Roll back</button>
           </>}
           {c.status === 'implemented' && (isOwner || user.role === 'admin') && <>

@@ -4,6 +4,22 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.13.0] — 2026-05-01
+
+### Added
+- **Linked changes.** A change can now declare its relationship to other changes:
+  - **`depends_on`** (directional) — A depends on B; A can't be **started** or **implemented** until B is `implemented` or `closed`. Both `/start` and `/implement` enforce the gate, so callers who skip the in_progress step still hit it.
+  - **`relates_to`** (symmetric) — soft "see also" link, no enforcement. Stored canonically (lower id first) so adding A→B and B→A doesn't double up.
+- **`POST /api/changes/:id/links`** — body `{ toChangeId, kind }`; owner/admin only. Self-links, duplicates, and direct cycles on `depends_on` (A→B exists, then B→A) are rejected with `409`.
+- **`DELETE /api/changes/:id/links/:linkId`** — owner/admin only; the link must touch the path change (so `/api/changes/A/links/X` can't delete a link belonging to change B).
+- **`GET /api/changes/:id`** payload now carries a `links` block: `{ dependsOn, blockedBy, blocks, relatedTo }`. `blockedBy` is the subset of `dependsOn` whose target isn't yet implemented or closed — the same predicate the gate uses, so the UI never disagrees with the server.
+- **Linked-changes panel** on the change-detail page: list with status badges, "+ Link a change" form (kind + change id), Remove buttons. When `blockedBy` is non-empty, a banner explains the block and the **Start implementation** / **Mark implemented** buttons are disabled with a tooltip listing the unmet prereqs.
+
+### Internal
+- Migration 012 adds `change_links(id, from_change_id, to_change_id, kind, created_at, created_by)` with `kind IN ('depends_on','relates_to')`, `UNIQUE(from, to, kind)`, FK `ON DELETE CASCADE` from both ends, and indexes on each direction. Deleting a change cascades its links cleanly.
+- `services/changeLinks.js` — `addLink`, `removeLink`, `getLink`, `getLinksForChange`, `getBlockingDeps`. The latter is the single source of truth for the gate, called by both `/start` and `/implement`.
+- 14 new server tests in `changeLinks.test.js` cover CRUD, self/duplicate/cycle rejection, ownership, payload symmetry, the start/implement gate (including bypass via direct `/implement`), `closed` as also "complete enough", `blockedBy` shape, link cascade on draft delete, and audit-log capture of `add_link` / `remove_link`.
+
 ## [0.12.0] — 2026-04-29
 
 ### Added
