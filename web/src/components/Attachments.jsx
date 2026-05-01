@@ -12,9 +12,11 @@ function fmtBytes(n) {
 export default function Attachments({ changeId }) {
   const qc = useQueryClient();
   const { user } = useAuth();
+  // Only show change-wide attachments here. Per-note attachments render
+  // inline under their owning note in the Notes component.
   const { data, isLoading } = useQuery({
-    queryKey: ['attachments', changeId],
-    queryFn: () => api.get(`/api/changes/${changeId}/attachments`),
+    queryKey: ['attachments', changeId, 'change-wide'],
+    queryFn: () => api.get(`/api/changes/${changeId}/attachments?scope=change-wide`),
   });
 
   const [file, setFile] = useState(null);
@@ -24,7 +26,7 @@ export default function Attachments({ changeId }) {
 
   const remove = useMutation({
     mutationFn: (id) => api.delete(`/api/changes/${changeId}/attachments/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['attachments', changeId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attachments', changeId, 'change-wide'] }),
     onError: (e) => setErr(e.message),
   });
 

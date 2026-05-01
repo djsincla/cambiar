@@ -143,3 +143,76 @@ describe('Change attachments', () => {
     expect(ok.status).toBe(200);
   });
 });
+
+describe('Attachments threaded under notes', () => {
+  beforeEach(resetDb);
+
+  const PNG = Buffer.from(
+    '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da6300010000000500010d0a2db40000000049454e44ae426082',
+    'hex',
+  );
+
+  test('upload with noteId threads it under that note; scope filter splits the views', async () => {
+    const a = await adminAgent();
+    const id = await setupChangeBy(a);
+    const note = (await a.post(`/api/changes/${id}/notes`).send({ body: 'investigation log' })).body.note;
+
+    const threaded = await a.post(`/api/changes/${id}/attachments`)
+      .attach('file', PNG, 'evidence.png')
+      .field('noteId', String(note.id));
+    expect(threaded.status).toBe(201);
+    expect(threaded.body.attachment.noteId).toBe(note.id);
+
+    const wide = await a.post(`/api/changes/${id}/attachments`)
+      .attach('file', PNG, 'general.png');
+    expect(wide.body.attachment.noteId).toBeNull();
+
+    // scope=change-wide returns only the un-threaded one.
+    const widthList = (await a.get(`/api/changes/${id}/attachments?scope=change-wide`)).body.attachments;
+    expect(widthList).toHaveLength(1);
+    expect(widthList[0].id).toBe(wide.body.attachment.id);
+
+    // scope=note&noteId returns only the threaded one.
+    const noteList = (await a.get(`/api/changes/${id}/attachments?scope=note&noteId=${note.id}`)).body.attachments;
+    expect(noteList).toHaveLength(1);
+    expect(noteList[0].id).toBe(threaded.body.attachment.id);
+
+    // No scope = both (legacy).
+    const all = (await a.get(`/api/changes/${id}/attachments`)).body.attachments;
+    expect(all).toHaveLength(2);
+  });
+
+  test('rejects noteId belonging to a different change', async () => {
+    const a = await adminAgent();
+    const id1 = await setupChangeBy(a);
+    const id2 = await setupChangeBy(a);
+    const note2 = (await a.post(`/api/changes/${id2}/notes`).send({ body: 'on the other change' })).body.note;
+
+    const res = await a.post(`/api/changes/${id1}/attachments`)
+      .attach('file', PNG, 'cross-link.png')
+      .field('noteId', String(note2.id));
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/does not belong/i);
+  });
+
+  test('deleting a note cascades its threaded attachments', async () => {
+    const a = await adminAgent();
+    const id = await setupChangeBy(a);
+    const note = (await a.post(`/api/changes/${id}/notes`).send({ body: 'temp' })).body.note;
+    await a.post(`/api/changes/${id}/attachments`).attach('file', PNG, 'a.png').field('noteId', String(note.id));
+    await a.post(`/api/changes/${id}/attachments`).attach('file', PNG, 'b.png').field('noteId', String(note.id));
+
+    expect(rows('SELECT id FROM change_attachments WHERE note_id = ?', note.id)).toHaveLength(2);
+    await a.delete(`/api/changes/${id}/notes/${note.id}`);
+    expect(rows('SELECT id FROM change_attachments WHERE note_id = ?', note.id)).toHaveLength(0);
+  });
+
+  test('rejects malformed noteId', async () => {
+    const a = await adminAgent();
+    const id = await setupChangeBy(a);
+    const res = await a.post(`/api/changes/${id}/attachments`)
+      .attach('file', PNG, 'x.png')
+      .field('noteId', 'not-a-number');
+    expect(res.status).toBe(400);
+  });
+});

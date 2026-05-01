@@ -60,6 +60,7 @@ function formatAttachment(r) {
   return {
     id: r.id,
     changeId: r.change_id,
+    noteId: r.note_id ?? null,
     filename: r.filename,
     originalFilename: r.original_filename,
     mimeType: r.mime_type,
@@ -70,14 +71,28 @@ function formatAttachment(r) {
   };
 }
 
+// scope=change-wide : only attachments with note_id IS NULL
+// scope=note&noteId=N : only attachments belonging to that note
+// (default) : all attachments for the change
 router.get('/', (req, res) => {
   const change = loadChange(req, res);
   if (!change) return;
+  const scope = String(req.query.scope ?? '');
+  const noteId = req.query.noteId ? Number(req.query.noteId) : null;
+
+  let where = 'a.change_id = ?';
+  const params = [change.id];
+  if (scope === 'change-wide') {
+    where += ' AND a.note_id IS NULL';
+  } else if (scope === 'note' && Number.isFinite(noteId)) {
+    where += ' AND a.note_id = ?';
+    params.push(noteId);
+  }
   const rows = db.prepare(`
     SELECT a.*, u.username AS author_username, u.display_name AS author_display_name
     FROM change_attachments a LEFT JOIN users u ON u.id = a.user_id
-    WHERE a.change_id = ? ORDER BY a.id ASC
-  `).all(change.id);
+    WHERE ${where} ORDER BY a.id ASC
+  `).all(...params);
   res.json({ attachments: rows.map(formatAttachment) });
 });
 
@@ -89,11 +104,26 @@ router.post('/', (req, res) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'no file uploaded' });
 
+    // Multer parses non-file form fields into req.body. Optional noteId
+    // threads the upload under a specific note; we validate it belongs
+    // to this change so a hostile client can't cross-link.
+    let noteId = null;
+    if (req.body.noteId != null && req.body.noteId !== '') {
+      const n = Number(req.body.noteId);
+      if (!Number.isFinite(n)) return res.status(400).json({ error: 'invalid noteId' });
+      const note = db.prepare('SELECT id FROM change_notes WHERE id = ? AND change_id = ?').get(n, change.id);
+      if (!note) return res.status(400).json({ error: 'note does not belong to this change' });
+      noteId = n;
+    }
+
     const info = db.prepare(`
-      INSERT INTO change_attachments (change_id, user_id, filename, original_filename, mime_type, size_bytes)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(change.id, req.user.id, req.file.filename, req.file.originalname, req.file.mimetype, req.file.size);
-    recordAudit({ changeId: change.id, userId: req.user.id, action: 'attachment_add', details: { attachmentId: Number(info.lastInsertRowid), filename: req.file.originalname } });
+      INSERT INTO change_attachments (change_id, user_id, note_id, filename, original_filename, mime_type, size_bytes)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(change.id, req.user.id, noteId, req.file.filename, req.file.originalname, req.file.mimetype, req.file.size);
+    recordAudit({
+      changeId: change.id, userId: req.user.id, action: 'attachment_add',
+      details: { attachmentId: Number(info.lastInsertRowid), filename: req.file.originalname, noteId },
+    });
 
     const row = db.prepare(`
       SELECT a.*, u.username AS author_username, u.display_name AS author_display_name

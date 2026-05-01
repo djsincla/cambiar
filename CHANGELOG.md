@@ -4,6 +4,20 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.16.0] — 2026-05-01
+
+### Added
+- **Attachments threaded under specific notes.** Files can now be uploaded as part of a note rather than just to the change as a whole. Useful when a change accumulates evidence over time — screenshots from one investigation step stay with the note that describes them, so a reader doesn't have to guess which of fifteen change-wide attachments belongs with which note.
+- **`POST /api/changes/:id/attachments`** now accepts an optional `noteId` form field. The note must belong to the change (cross-linking is refused with `400`).
+- **`GET /api/changes/:id/attachments?scope=change-wide`** returns only un-threaded attachments. **`?scope=note&noteId=N`** returns just that note's attachments. No scope returns all (legacy).
+- **Per-note attachment row** in the Notes UI: each note shows its threaded files inline as a chip row (filename + thumbnail for images + size + delete control for the author/admin). An **+ Attach file** button on each note uploads through to the threaded list. The change-wide Attachments panel below now only shows un-threaded files.
+- **Delete cascade:** removing a note removes any attachments threaded under it (the on-disk files are not currently re-claimed by the cascade — only the DB rows are; the disk gc is a follow-up).
+
+### Internal
+- Migration 015 adds `change_attachments.note_id` (nullable; existing rows keep `NULL`, meaning "change-wide" — same behavior as before) with an `ON DELETE CASCADE` FK to `change_notes` and a partial index on non-null values for the per-note read.
+- Multer parses non-file form fields into `req.body`, so the upload route validates `noteId` on the same request that sets it. Note ownership is enforced (`note.change_id = path :id`) to prevent cross-change linking.
+- 4 new server tests in `notesAndAttachments.test.js` cover the threaded upload + scope filters, cross-change rejection, the cascade on note delete, and malformed `noteId` rejection. 301 → 305 server tests, all green.
+
 ## [0.15.0] — 2026-05-01
 
 ### Added
