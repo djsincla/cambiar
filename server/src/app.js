@@ -18,6 +18,7 @@ import attachmentsRouter from './routes/attachments.js';
 import changeTemplatesRouter from './routes/changeTemplates.js';
 import emailRulesRouter from './routes/emailRules.js';
 import emailLogRouter from './routes/emailLog.js';
+import icalRouter from './routes/ical.js';
 
 /**
  * Build an Express app instance. Migrations and admin bootstrap are NOT
@@ -78,6 +79,10 @@ export function createApp({ httpLogger = true } = {}) {
   app.use('/api/digests', digestsRouter);
   app.use('/api/email-rules', emailRulesRouter);
   app.use('/api/email-log', emailLogRouter);
+
+  // Public iCal feed — token-authed via query string, mounted outside /api
+  // so calendar subscription URLs don't get caught by the SPA catch-all.
+  app.use('/ical', icalRouter);
 
   // Serve uploaded files (logos etc.) — no auth required because the logo is public branding.
   // fallthrough:false so missing files return 404 instead of falling into the SPA catch-all.

@@ -4,6 +4,21 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.14.0] — 2026-05-01
+
+### Added
+- **iCal subscription feed.** Each user can now subscribe to a per-user `webcal://`-style URL and see upcoming changes in Google Calendar, Apple Calendar, or any iCal-compatible app — alongside their other commitments, no Cambiar login needed.
+- **`GET /ical/upcoming.ics?token=<token>`** — public, token-authed (the token *is* the credential — calendar apps don't do interactive auth). Returns RFC 5545 iCalendar with one `VEVENT` per scheduled change in `[now-7d, now+90d]` whose status is `submitted`, `approved`, `in_progress`, or `implemented`. Recurring parents are excluded — they're generators, not events.
+- Each event has `DTSTART` from `scheduled_at`, `DTEND` from `scheduled_at + planned_duration_minutes` (default 30 min), `SUMMARY` `[Cambiar #N] Title`, `URL` back to the change detail, and `STATUS` `TENTATIVE` for `submitted` or `CONFIRMED` for everything else. Closed/rolled-back/rejected/draft are filtered out — drafts aren't commitments and the rest are done.
+- **`GET /api/auth/me/ical-token`** returns the user's current token (creating one on first read), and **`POST /api/auth/me/ical-token/rotate`** replaces it. Old tokens stop authenticating immediately on rotation.
+- **Subscribe… UI** on the `/upcoming` page: panel shows the URL, copy-to-clipboard button, rotate-token button, and quick subscription instructions for Google Calendar and Apple Calendar.
+
+### Internal
+- Migration 013 adds `users.ical_token TEXT` with a unique partial index on non-null values.
+- New `BASE_URL` env var (default `http://localhost:3000` in dev) feeds `config.baseUrl` so feed URLs and event `URL:` fields use the externally-reachable hostname.
+- `services/icalFeed.js` — `generateIcalToken`, `findUserByIcalToken`, `getOrCreateIcalToken`, `rotateIcalToken`, `buildIcalFeed`. The feed renders CRLF line endings as RFC 5545 mandates and escapes `,`, `;`, `\`, and newlines per spec.
+- 9 new server tests in `ical.test.js` cover token-stable-on-reread, rotation invalidating the old token, missing/invalid token returning 401 plain text, content-type, status mapping (submitted → TENTATIVE), inactive-user refusal, and recurring-parent exclusion.
+
 ## [0.13.0] — 2026-05-01
 
 ### Added

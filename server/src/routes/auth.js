@@ -7,6 +7,7 @@ import { authenticateAD, adEnabled, mapGroupsToRole, userIsAllowedByAD, syncADUs
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getOrCreateIcalToken, rotateIcalToken } from '../services/icalFeed.js';
 
 const router = Router();
 
@@ -78,6 +79,26 @@ router.post('/logout', (req, res) => {
 router.get('/me', requireAuth, (req, res) => {
   res.json({ user: sanitizeUser(req.user) });
 });
+
+// Calendar feed token. GET returns the current (creating one on first read);
+// POST rotates. The token IS the credential, so we don't return it
+// alongside /me by default — only when explicitly asked.
+router.get('/me/ical-token', requireAuth, (req, res) => {
+  const token = getOrCreateIcalToken(req.user.id);
+  res.json({ token, url: buildIcalSubscribeUrl(req, token) });
+});
+
+router.post('/me/ical-token/rotate', requireAuth, (req, res) => {
+  const token = rotateIcalToken(req.user.id);
+  res.json({ token, url: buildIcalSubscribeUrl(req, token) });
+});
+
+function buildIcalSubscribeUrl(req, token) {
+  // Prefer the configured baseUrl so the link works from outside the LAN.
+  // Fall back to the request's host if baseUrl isn't set sensibly.
+  const base = (config.baseUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  return `${base}/ical/upcoming.ics?token=${encodeURIComponent(token)}`;
+}
 
 const changePwSchema = z.object({
   currentPassword: z.string().min(1),

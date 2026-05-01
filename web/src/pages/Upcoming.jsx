@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api.js';
 import { statusLabel, STATUS_LABELS, viewerHint } from '../statuses.js';
 import { fmtDuration } from '../duration.js';
+import IcalSubscribe from '../components/IcalSubscribe.jsx';
 
 const ALL_STATUSES = Object.keys(STATUS_LABELS);
 const DEFAULT_STATUSES = ['submitted', 'approved', 'implemented'];
@@ -122,12 +123,15 @@ export default function Upcoming() {
     <>
       <div className="row between">
         <h1>Upcoming changes</h1>
-        <div className="tabs">
-          {['month', 'week', 'day', 'list'].map(v => (
-            <button key={v} className={`tab ${view === v ? 'active' : ''}`} onClick={() => setView(v)}>
-              {v[0].toUpperCase() + v.slice(1)}
-            </button>
-          ))}
+        <div className="row" style={{ gap: 8 }}>
+          <IcalSubscribe />
+          <div className="tabs">
+            {['month', 'week', 'day', 'list'].map(v => (
+              <button key={v} className={`tab ${view === v ? 'active' : ''}`} onClick={() => setView(v)}>
+                {v[0].toUpperCase() + v.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

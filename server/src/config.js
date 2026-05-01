@@ -25,6 +25,9 @@ export const config = {
   port: Number(process.env.PORT ?? 3000),
   env: process.env.NODE_ENV ?? 'development',
   dataDir: resolve(repoRoot, process.env.DATA_DIR ?? './data'),
+  // External-facing base URL, used for links in emails, the iCal feed,
+  // notification subjects, etc. Falls back to localhost in dev.
+  baseUrl: process.env.BASE_URL ?? `http://localhost:${process.env.PORT ?? 3000}`,
   logLevel: process.env.LOG_LEVEL ?? 'info',
 
   jwt: {
