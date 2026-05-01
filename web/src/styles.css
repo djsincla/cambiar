@@ -193,3 +193,61 @@ tbody tr:hover { background: var(--panel-2); }
 /* Lightbox for image previews */
 .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 1000; cursor: zoom-out; padding: 32px; }
 .lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* ---------------------------------------------------------------- */
+/* Responsive: tablet                                               */
+/* ---------------------------------------------------------------- */
+@media (max-width: 900px) {
+  main { padding: 0 16px; margin: 16px auto; }
+  header.topbar { flex-wrap: wrap; height: auto; min-height: 56px; padding: 0 16px; gap: 12px; }
+  header.topbar nav { flex-wrap: wrap; gap: 12px; row-gap: 8px; padding: 4px 0; }
+  .row.between { flex-wrap: wrap; gap: 8px; }
+}
+
+/* ---------------------------------------------------------------- */
+/* Responsive: phone                                                */
+/* ---------------------------------------------------------------- */
+@media (max-width: 600px) {
+  main { padding: 0 12px; margin: 12px auto; }
+  h1 { font-size: 22px; }
+  h2 { font-size: 17px; }
+
+  /* Tables in panels: let them scroll horizontally without breaking layout. */
+  .panel { overflow-x: auto; }
+
+  /* Topbar shrinks: brand stays, nav wraps under, user controls stay right. */
+  header.topbar { padding: 8px 12px; }
+  header.topbar .brand { min-width: 0; }
+  header.topbar .brand-text { font-size: 14px; }
+  header.topbar nav { width: 100%; order: 3; gap: 10px; row-gap: 6px; font-size: 14px; }
+  header.topbar nav a { padding: 4px 0; }
+  header.topbar .user { gap: 8px; font-size: 12px; }
+  header.topbar .user .icon-button { padding: 4px; }
+
+  /* Tabs: shrink padding so 4 tabs fit. */
+  .tabs .tab { padding: 6px 10px; font-size: 13px; }
+
+  /* Month grid: cells get cramped — allow shorter and smaller chip text. */
+  .cal-grid { gap: 1px; }
+  .cal-cell { min-height: 60px; padding: 4px; }
+  .cal-day { font-size: 11px; }
+  .cal-chip { font-size: 10px; padding: 1px 4px; }
+  .cal-head { padding: 4px 2px; font-size: 10px; }
+
+  /* Time-grid (week + day): on phones the 7-column week grid is unreadable.
+     Wrap it in a horizontal scroller and give each day column a min width
+     so chips stay legible. The user swipes horizontally to see the week. */
+  .time-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .time-grid.time-grid-week { min-width: 760px; }
+
+  /* Day view stays single-column — just shrink the gutter. */
+  .time-grid.time-grid-day { min-width: auto; }
+  .time-hour { font-size: 10px; padding: 2px 4px; }
+
+  /* Notes + attachments: avoid wide chips. */
+  .att-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+  .att-thumb { height: 90px; }
+
+  /* Forms: full-width inputs play nicer on narrow screens. */
+  input[type="text"], input[type="email"], input[type="number"], input[type="url"], textarea, select { width: 100%; max-width: 100%; box-sizing: border-box; }
+}

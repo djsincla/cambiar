@@ -273,8 +273,11 @@ function TimeGrid({ days, changes }) {
     if (byDay.has(day)) byDay.get(day).push(c);
   }
 
+  const variantClass = days.length > 1 ? 'time-grid-week' : 'time-grid-day';
+
   return (
-    <div className="time-grid" style={{ '--hour-h': `${HOUR_HEIGHT}px`, '--total-h': `${totalHours * HOUR_HEIGHT}px`, gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
+    <div className="time-grid-wrap">
+    <div className={`time-grid ${variantClass}`} style={{ '--hour-h': `${HOUR_HEIGHT}px`, '--total-h': `${totalHours * HOUR_HEIGHT}px`, gridTemplateColumns: `60px repeat(${days.length}, 1fr)` }}>
       <div className="time-head">&nbsp;</div>
       {days.map(d => (
         <div key={isoDate(d)} className={`time-head ${isoDate(d) === today ? 'today' : ''}`}>
@@ -315,6 +318,7 @@ function TimeGrid({ days, changes }) {
           </div>
         );
       })}
+    </div>
     </div>
   );
 }

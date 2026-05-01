@@ -4,6 +4,19 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.17.0] — 2026-05-01
+
+### Changed
+- **Mobile/responsive polish.** Two new breakpoints (`<= 900px` tablet, `<= 600px` phone) tighten the layout for narrow screens.
+- **Topbar** wraps onto multiple rows on phones instead of forcing nav links off-screen. Brand text shrinks; user controls stay on the right.
+- **Calendar week view** now horizontally scrolls inside its panel on phones (each day column keeps a sensible min width — chips stay legible — and the user swipes to see the rest of the week). The day view stays single-column with a smaller hour gutter.
+- **Month view** chips and cells shrink so a 7-column layout still works on phones.
+- **Tables** inside panels scroll horizontally rather than busting the layout.
+- **Inputs** go full-width on phones, so a tap doesn't have to land on a 200-px target.
+
+### Internal
+- All polish is CSS-only (`web/src/styles.css`) plus a small markup change on the time-grid: it's now wrapped in a `.time-grid-wrap` scroll container and tagged `.time-grid-week` / `.time-grid-day` so the week-view min-width applies only to the week. No JS or schema changes.
+
 ## [0.16.0] — 2026-05-01
 
 ### Added
