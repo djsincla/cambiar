@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { signToken, COOKIE_NAME, cookieOptions } from '../auth/jwt.js';
 import { hashPassword, verifyPassword, validatePasswordStrength } from '../auth/passwords.js';
-import { authenticateAD, adEnabled, mapGroupsToRole } from '../auth/ad.js';
+import { authenticateAD, adEnabled, mapGroupsToRole, userIsAllowedByAD, syncADUserGroups } from '../auth/ad.js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -41,8 +41,24 @@ router.post('/login', async (req, res) => {
     try {
       const adUser = await authenticateAD(username, password);
       if (adUser) {
+        // Allowlist check: when auth.ad.allowedGroups is non-empty, the user
+        // must be a member of at least one of those groups.
+        if (!userIsAllowedByAD(adUser.groups ?? [])) {
+          logger.warn({ username: adUser.username }, 'AD user rejected by allowedGroups');
+          return res.status(403).json({ error: 'access not granted to this directory user' });
+        }
         const stored = upsertADUser(adUser);
         if (!stored.active) return res.status(403).json({ error: 'account disabled' });
+        // Reconcile Cambiar group memberships from AD groups (auto-creates
+        // AD-managed groups, removes the user from synced groups they no
+        // longer belong to in AD).
+        try {
+          syncADUserGroups({ userId: stored.id, adGroups: adUser.groups ?? [] });
+        } catch (err) {
+          logger.error({ err: err.message, userId: stored.id }, 'AD group sync failed');
+          // Don't block login on sync failure — user can still get in with
+          // their last-known group set.
+        }
         return issueSession(res, stored);
       }
     } catch (err) {

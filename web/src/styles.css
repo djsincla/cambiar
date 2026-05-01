@@ -82,6 +82,7 @@ tbody tr:hover { background: var(--panel-2); }
 }
 .badge.closed { background: var(--panel-2); color: var(--muted); }
 .badge.rolled_back { background: rgba(255,107,107,0.15); color: var(--danger); border-color: var(--danger); }
+.badge.ad-managed { background: rgba(91,157,255,0.15); color: var(--accent); border-color: var(--accent); }
 
 .banner { background: rgba(255,184,77,0.1); border: 1px solid var(--warning); color: var(--warning); padding: 10px 14px; border-radius: var(--radius); margin-bottom: 16px; }
 .error { color: var(--danger); margin-top: 8px; }

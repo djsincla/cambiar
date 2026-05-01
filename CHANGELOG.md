@@ -4,6 +4,28 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.12.0] — 2026-04-29
+
+### Added
+- **AD allowlist gate.** New `auth.ad.allowedGroups` config option. When non-empty, only AD users who are members of at least one of the listed groups can log in — even if their AD password is correct. Empty (default) means "any authenticated AD user can log in", preserving prior behavior. Pattern match is case-insensitive substring against each `memberOf` DN, so `Cambiar-Users` matches `cn=Cambiar-Users,ou=Groups,dc=example,dc=com`.
+- **AD group sync.** New `auth.ad.groupSync` config. Each entry maps an AD group to a Cambiar group and (optionally) a role:
+  ```yaml
+  groupSync:
+    - { adGroup: Cambiar-Approvers, cambiarGroup: Approvers, role: approver }
+    - { adGroup: Cambiar-Admins,    cambiarGroup: Admins,    role: admin    }
+    - { adGroup: Cambiar-Users,     cambiarGroup: AllUsers }
+  ```
+  On every AD login the user's Cambiar group memberships are reconciled to match their AD memberships — added to mapped groups they belong to in AD, removed from mapped groups they no longer belong to. Cambiar groups created this way are flagged `ad_managed`.
+- **Role composition** — `groupSync` entries with a `role` compose with `groupRoleMap`. Highest role wins (admin > approver > submitter), so a user in both `Cambiar-Approvers` and `Cambiar-Admins` ends up `admin`.
+- **AD-managed group lock** — groups flagged `ad_managed` are read-only via the API. `PATCH /api/groups/:id`, `DELETE /api/groups/:id`, and member add/remove endpoints all return `409` with the message *"this group is AD-managed and reconciled on every AD login; edit the AD group, not Cambiar"*. The Groups admin page shows an **AD-managed** badge, swaps the Edit/Delete buttons for a single View action, and disables the form fields when viewing one.
+
+### Internal
+- Migration 011 adds `groups.ad_managed` (default 0).
+- `auth/ad.js` gains `userIsAllowedByAD()` and `syncADUserGroups({ userId, adGroups })`. `mapGroupsToRole()` now folds in roles declared on `groupSync` entries.
+- `routes/auth.js` login flow: after a successful AD bind, gate on `userIsAllowedByAD` (403 if denied), then run `syncADUserGroups` in a try/catch — sync failure logs but does not block the login (last-known group set still applies).
+- `services/groups.js` exposes `adManaged` on every group payload and adds an `isAdManaged(id)` helper.
+- 8 new server tests in `adAllowlistAndSync.test.js` cover allowlist accept/reject/empty, auto-create + reconcile + drift removal, role composition (admin wins over approver), and the AD-managed lock semantics on PATCH/DELETE/member endpoints.
+
 ## [0.11.0] — 2026-04-30
 
 ### Added

@@ -44,12 +44,21 @@ export default function Groups() {
               {data.groups.length === 0 && <tr><td colSpan={4} style={{ padding: 24, textAlign: 'center', color: 'var(--muted)' }}>No groups yet.</td></tr>}
               {data.groups.map(g => (
                 <tr key={g.id}>
-                  <td>{g.name}</td>
+                  <td>
+                    {g.name}
+                    {g.adManaged && <span className="badge ad-managed" title="Reconciled from Active Directory on every AD login. Edit the AD group, not Cambiar." style={{ marginLeft: 8 }}>AD-managed</span>}
+                  </td>
                   <td>{g.description || <span className="muted">—</span>}</td>
                   <td>{g.memberCount}</td>
                   <td className="row" style={{ gap: 6, justifyContent: 'flex-end' }}>
-                    <button className="secondary" onClick={() => { setEditing(g.id); setErr(null); }}>Edit</button>
-                    <button className="danger" onClick={() => { if (confirm(`Delete group "${g.name}"?`)) remove.mutate(g.id); }}>Delete</button>
+                    {g.adManaged ? (
+                      <button className="secondary" onClick={() => { setEditing(g.id); setErr(null); }}>View</button>
+                    ) : (
+                      <>
+                        <button className="secondary" onClick={() => { setEditing(g.id); setErr(null); }}>Edit</button>
+                        <button className="danger" onClick={() => { if (confirm(`Delete group "${g.name}"?`)) remove.mutate(g.id); }}>Delete</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -91,26 +100,36 @@ function GroupForm({ groupId, onClose, onSaved, onError }) {
 
   const toggle = (id) => setMemberIds(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
+  const adManaged = Boolean(group?.group?.adManaged);
+
   return (
-    <form className="panel" onSubmit={(e) => { e.preventDefault(); save.mutate({ name, description: description || null, memberIds }); }}>
-      <h2>{isNew ? 'New group' : `Edit ${group?.group?.name ?? '…'}`}</h2>
+    <form className="panel" onSubmit={(e) => { e.preventDefault(); if (adManaged) return; save.mutate({ name, description: description || null, memberIds }); }}>
+      <h2>
+        {isNew ? 'New group' : `${adManaged ? 'View' : 'Edit'} ${group?.group?.name ?? '…'}`}
+        {adManaged && <span className="badge ad-managed" style={{ marginLeft: 8, fontSize: '0.75em' }}>AD-managed</span>}
+      </h2>
+      {adManaged && (
+        <div className="muted" style={{ marginBottom: 12 }}>
+          This group is reconciled from Active Directory on every AD login. To change its name, description, or members, edit the corresponding AD group — Cambiar will pick up the change on the next AD login.
+        </div>
+      )}
       <label>Name</label>
-      <input aria-label="Name" value={name} onChange={e => setName(e.target.value)} required />
+      <input aria-label="Name" value={name} onChange={e => setName(e.target.value)} required disabled={adManaged} />
       <label>Description</label>
-      <input aria-label="Description" value={description} onChange={e => setDescription(e.target.value)} />
+      <input aria-label="Description" value={description} onChange={e => setDescription(e.target.value)} disabled={adManaged} />
       <label>Members</label>
-      <div style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', borderRadius: 6, padding: 8, maxHeight: 220, overflow: 'auto' }}>
+      <div style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', borderRadius: 6, padding: 8, maxHeight: 220, overflow: 'auto', opacity: adManaged ? 0.7 : 1 }}>
         {users.length === 0 && <span className="muted">No users yet.</span>}
         {users.map(u => (
           <label key={u.id} style={{ display: 'flex', gap: 8, margin: 0, padding: '4px 0', alignItems: 'center', color: 'var(--text)' }}>
-            <input type="checkbox" checked={memberIds.includes(u.id)} onChange={() => toggle(u.id)} style={{ width: 'auto' }} />
+            <input type="checkbox" checked={memberIds.includes(u.id)} onChange={() => toggle(u.id)} disabled={adManaged} style={{ width: 'auto' }} />
             <span>{u.displayName || u.username} <span className="muted">({u.username}, {u.role})</span></span>
           </label>
         ))}
       </div>
       <div className="row" style={{ marginTop: 12 }}>
-        <button type="submit" disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</button>
-        <button type="button" className="secondary" onClick={onClose}>Cancel</button>
+        {!adManaged && <button type="submit" disabled={save.isPending}>{save.isPending ? 'Saving…' : 'Save'}</button>}
+        <button type="button" className="secondary" onClick={onClose}>{adManaged ? 'Close' : 'Cancel'}</button>
       </div>
     </form>
   );

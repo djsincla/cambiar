@@ -6,9 +6,15 @@ function rowToGroup(r) {
     name: r.name,
     description: r.description,
     memberCount: r.member_count ?? null,
+    adManaged: Boolean(r.ad_managed),
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
+}
+
+export function isAdManaged(id) {
+  const r = db.prepare('SELECT ad_managed FROM groups WHERE id = ?').get(id);
+  return r ? Boolean(r.ad_managed) : false;
 }
 
 export function listGroups() {
