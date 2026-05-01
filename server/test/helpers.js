@@ -19,6 +19,7 @@ export function getApp() {
  */
 export function resetDb() {
   db.exec(`
+    DELETE FROM alerts;
     DELETE FROM audit_log;
     DELETE FROM approvals;
     DELETE FROM change_attachments;

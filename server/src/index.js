@@ -5,6 +5,7 @@ import { createApp } from './app.js';
 import { startScheduler, stopScheduler } from './services/digestScheduler.js';
 import { startEmailPoller, stopEmailPoller } from './services/emailPoller.js';
 import { startRecurringScheduler, stopRecurringScheduler } from './services/recurringScheduler.js';
+import { startAlertsScheduler, stopAlertsScheduler } from './services/alertsScheduler.js';
 
 runMigrations();
 bootstrapAdmin();
@@ -12,6 +13,7 @@ seedChangeTypesFromConfig();
 startScheduler();
 startEmailPoller();
 startRecurringScheduler();
+startAlertsScheduler();
 
 const app = createApp();
 const server = app.listen(config.port, () => {
@@ -23,6 +25,7 @@ const shutdown = (sig) => {
   stopScheduler();
   stopEmailPoller();
   stopRecurringScheduler();
+  stopAlertsScheduler();
   server.close(() => process.exit(0));
 };
 process.on('SIGINT', shutdown);

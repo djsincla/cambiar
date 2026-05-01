@@ -19,6 +19,7 @@ import changeTemplatesRouter from './routes/changeTemplates.js';
 import emailRulesRouter from './routes/emailRules.js';
 import emailLogRouter from './routes/emailLog.js';
 import icalRouter from './routes/ical.js';
+import alertsRouter from './routes/alerts.js';
 
 /**
  * Build an Express app instance. Migrations and admin bootstrap are NOT
@@ -79,6 +80,7 @@ export function createApp({ httpLogger = true } = {}) {
   app.use('/api/digests', digestsRouter);
   app.use('/api/email-rules', emailRulesRouter);
   app.use('/api/email-log', emailLogRouter);
+  app.use('/api/alerts', alertsRouter);
 
   // Public iCal feed — token-authed via query string, mounted outside /api
   // so calendar subscription URLs don't get caught by the SPA catch-all.

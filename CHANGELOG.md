@@ -4,6 +4,25 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.15.0] — 2026-05-01
+
+### Added
+- **Operational alerts.** A scheduled checker now raises and resolves operational alerts on its own, so problems surface before someone notices the absence of a thing.
+  - **Approval SLA** — fires when a change has been sitting in `submitted` past the configured threshold (default 24 h) without an approve/reject. Resolves automatically when the change moves out of `submitted`.
+  - **Recurring drift** — fires when a recurring parent's `recurrence_last_fired_at` is older than the most recent expected fire time (computed from its cron + timezone) by more than the tolerance (default 5 min). Catches "the scheduler missed an interval" or "a fire failed silently". Resolves once the parent fires again.
+- **Idempotent.** Each `(kind, subject)` is single-active — re-running checks while the condition persists doesn't re-fire or re-notify.
+- **Email notifications** to admins when a new alert first fires (uses the existing SMTP transport; recipient list defaults to active admins' emails, overridable via `notifications.alerts.notifyEmails`).
+- **`GET /api/alerts/count`** — lightweight active-alert count, available to any authed user (powers the topbar badge).
+- **`GET /api/alerts?status=active|resolved`** — admin-only list view.
+- **`POST /api/alerts/:id/resolve`** — manual close.
+- **`POST /api/alerts/check-now`** — admin-triggered immediate run for testing or after a config change.
+- **Admin Alerts page** at `/admin/alerts` with active/resolved tabs, age display, and Resolve / Check now controls. **Topbar Alerts badge** for admins shows the active count, polled every 60 s.
+
+### Internal
+- Migration 014 adds `alerts(id, kind, subject_change_id, fired_at, resolved_at, notified_at, details_json)` with `kind IN ('approval_sla','recurring_drift')`, FK CASCADE to `changes`, and a partial index on unresolved rows for the hot read path.
+- `services/alerts.js` — `runAlertChecks`, `listAlerts`, `resolveAlert`, `activeAlertCount`. `services/alertsScheduler.js` runs every `notifications.alerts.checkIntervalMinutes` (default 15) via node-cron, started/stopped from `index.js` next to the digest, recurring, and email pollers.
+- 12 new server tests in `alerts.test.js` cover SLA fire/no-fire/idempotency/auto-resolve, drift fire/resolve/no-fire-on-disabled-parents, the count endpoint's auth, and the admin list/resolve/check-now routes.
+
 ## [0.14.0] — 2026-05-01
 
 ### Added

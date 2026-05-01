@@ -18,6 +18,7 @@ import Digests from './pages/Digests.jsx';
 import ChangeTemplates from './pages/ChangeTemplates.jsx';
 import EmailIngestion from './pages/EmailIngestion.jsx';
 import Recurring from './pages/Recurring.jsx';
+import Alerts from './pages/Alerts.jsx';
 import { useTheme } from './theme.jsx';
 
 export default function App() {
@@ -53,6 +54,7 @@ export default function App() {
           <Route path="/admin/settings" element={<Protected admin><Settings /></Protected>} />
           <Route path="/admin/digests" element={<Protected admin><Digests /></Protected>} />
           <Route path="/admin/email" element={<Protected admin><EmailIngestion /></Protected>} />
+          <Route path="/admin/alerts" element={<Protected admin><Alerts /></Protected>} />
           <Route path="/templates" element={<Protected><ChangeTemplates /></Protected>} />
           <Route path="/recurring" element={<Protected><Recurring /></Protected>} />
           <Route path="/release-notes" element={<Protected><ReleaseNotes /></Protected>} />
@@ -87,6 +89,16 @@ function TopBar() {
   });
   const awaitingCount = awaiting?.changes?.length ?? 0;
 
+  // Active-alert count for the topbar (admin-visible button). Same poll
+  // cadence as approvals.
+  const { data: alertsCount } = useQuery({
+    queryKey: ['alerts-count', user.id],
+    queryFn: () => api.get('/api/alerts/count'),
+    refetchInterval: 60_000,
+    enabled: user.role === 'admin',
+  });
+  const activeAlerts = alertsCount?.active ?? 0;
+
   return (
     <header className="topbar">
       <div className="brand">
@@ -111,6 +123,10 @@ function TopBar() {
             <NavLink to="/admin/change-types" className={({ isActive }) => isActive ? 'active' : ''}>Change Types</NavLink>
             <NavLink to="/admin/digests" className={({ isActive }) => isActive ? 'active' : ''}>Digests</NavLink>
             <NavLink to="/admin/email" className={({ isActive }) => isActive ? 'active' : ''}>Email</NavLink>
+            <NavLink to="/admin/alerts" className="approvals-link">
+              Alerts
+              {activeAlerts > 0 && <span className="nav-badge" data-testid="alerts-badge">{activeAlerts}</span>}
+            </NavLink>
             <NavLink to="/admin/settings" className={({ isActive }) => isActive ? 'active' : ''}>Settings</NavLink>
           </>
         )}
