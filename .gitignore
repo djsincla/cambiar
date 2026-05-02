@@ -6,6 +6,8 @@ test-results/
 *.log
 .env
 .env.local
+config/gcal-service-account.json
+config/gcal-*.json
 .DS_Store
 dist/
 coverage/

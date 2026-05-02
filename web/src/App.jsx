@@ -20,6 +20,7 @@ import ChangeTemplates from './pages/ChangeTemplates.jsx';
 import EmailIngestion from './pages/EmailIngestion.jsx';
 import Recurring from './pages/Recurring.jsx';
 import Alerts from './pages/Alerts.jsx';
+import GoogleCalendar from './pages/GoogleCalendar.jsx';
 import { useTheme } from './theme.jsx';
 
 export default function App() {
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="/admin/digests" element={<Protected admin><Digests /></Protected>} />
           <Route path="/admin/email" element={<Protected admin><EmailIngestion /></Protected>} />
           <Route path="/admin/alerts" element={<Protected admin><Alerts /></Protected>} />
+          <Route path="/admin/gcal" element={<Protected admin><GoogleCalendar /></Protected>} />
           <Route path="/templates" element={<Protected><ChangeTemplates /></Protected>} />
           <Route path="/recurring" element={<Protected><Recurring /></Protected>} />
           <Route path="/release-notes" element={<Protected><ReleaseNotes /></Protected>} />
@@ -154,6 +156,7 @@ const ADMIN_LINKS = [
   { to: '/admin/change-types', label: 'Change types' },
   { to: '/admin/digests',      label: 'Digests' },
   { to: '/admin/email',        label: 'Email rules' },
+  { to: '/admin/gcal',         label: 'Google Calendar' },
   { to: '/admin/settings',     label: 'Settings' },
 ];
 

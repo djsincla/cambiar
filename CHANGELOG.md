@@ -4,6 +4,25 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.19.0] — 2026-05-01
+
+### Added
+- **Google Calendar push-sync.** Cambiar can now push changes directly into a shared Google Calendar via the Calendar API, in addition to (or instead of) the per-user iCal subscription. Events appear/update/disappear in the workshop's normal calendar without any user action — no subscribe step, no polling lag from the calendar client side.
+- **Service-account auth.** Set up a service account in Google Cloud, save the JSON key to `config/gcal-service-account.json` (gitignored), share the target calendar with the service account's email, fill in the calendar ID + the credentials path in `notifications.googleCalendar`, restart. README has the full walkthrough.
+- **Background reconciler.** Same scheduling pattern as digests / recurring / alerts: every `syncIntervalMinutes` (default 5) the reconciler picks up changes whose `updated_at` is past their last sync, plus newly-eligible / newly-de-eligible ones, and reconciles. Submitted → tentative event; approved/in_progress/implemented → confirmed; draft/closed/rejected/rolled_back → event deleted. Recurring parents are excluded — they're generators, not events.
+- **Admin page** at `/admin/gcal` (under `Admin ▾`) shows enabled/disabled state, calendar ID, credentials path resolution, sync interval, and counts (eligible / currently published / never synced) plus a **Sync now** button for verification.
+- **`GET /api/admin/gcal/status`** returns the same status payload (admin-only).
+- **`POST /api/admin/gcal/sync-now`** triggers an on-demand reconcile and returns counters (`inserted`, `updated`, `deleted`, `skipped`, `errors`).
+
+### Fixed
+- Topbar version stayed stale after a `package.json` bump until a full process restart. Server now reads `package.json` on every `/api/settings/branding` call (small file, cheap parse). The SPA also re-fetches branding on window focus, so a deployed version bump shows up without a hard reload.
+
+### Internal
+- Migration 017 adds `changes.gcal_event_id` (the Google event id, set after a successful insert) and `changes.gcal_synced_at` (last successful reconcile pass), plus a partial index on the hot read path.
+- New `services/googleCalendar.js` (auth + event CRUD via `googleapis`), `services/gcalSync.js` (reconciler), `services/gcalScheduler.js` (node-cron wrapper).
+- Tests use a `setCalendarClientForTests` seam to swap in an in-memory fake — no network in CI. 10 new server tests cover insert/update/delete branches, idempotency, the 404-already-gone case, recurring-parent exclusion, the disabled-integration short-circuit, and the admin API surface. 309 → 319 server tests, all green.
+- `config/gcal-*.json` is gitignored to keep service-account keys out of source control.
+
 ## [0.18.0] — 2026-05-01
 
 A quality-pass release: closes loose ends from recent feature work, adds the missing UI test coverage, and tidies the docs.

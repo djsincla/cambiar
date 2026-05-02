@@ -30,5 +30,11 @@
       "fromNumber": "+15555555555"
     },
     "events": ["approved", "rejected"]
+  },
+  "googleCalendar": {
+    "enabled": false,
+    "calendarId": "",
+    "credentialsFile": "config/gcal-service-account.json",
+    "syncIntervalMinutes": 5
   }
 }

@@ -236,6 +236,29 @@ Recipient rules:
 | `submitted` | Approvers (admins + members of any approver group on this change type) — never the submitter |
 | `approved` / `rejected` / `implemented` / `closed` | The submitter |
 
+## Google Calendar (push-only sync)
+
+Cambiar can push changes directly into a shared Google Calendar so the workshop sees them in their normal calendar app without each user having to subscribe to the iCal feed individually. Same scope as the iCal feed: scheduled non-recurring-parent changes in `submitted` / `approved` / `in_progress` / `implemented`.
+
+**One-time setup:**
+
+1. **Google Cloud project** — create one (or use an existing one). In the console, enable the **Google Calendar API**.
+2. **Service account** — IAM & Admin → Service Accounts → create one. Generate a JSON key and save it to `config/gcal-service-account.json` (this path is gitignored — keep the file out of source control).
+3. **Share the target calendar** — open Google Calendar settings for the calendar you want events to land in. Under "Share with specific people or groups", add the service account's email (it ends in `iam.gserviceaccount.com`) with **Make changes to events** permission.
+4. **Calendar ID** — same Settings page, scroll to "Integrate calendar" and copy the Calendar ID (looks like `abc...@group.calendar.google.com`, or just `primary` for the service account's own calendar).
+5. **Edit `config/notifications.json`:**
+   ```json
+   "googleCalendar": {
+     "enabled": true,
+     "calendarId": "abc123@group.calendar.google.com",
+     "credentialsFile": "config/gcal-service-account.json",
+     "syncIntervalMinutes": 5
+   }
+   ```
+6. Restart Cambiar. The `Google Calendar` admin page (under `Admin ▾`) shows status, counts, and a **Sync now** button for verification.
+
+A background reconciler runs every `syncIntervalMinutes` (default 5) and inserts / updates / deletes events as changes move through the lifecycle. The reconciler is idempotent — safe to run repeatedly. If an event is deleted manually in Google Calendar, the next sync notices the 404 on update/delete and clears the local `gcal_event_id` so it can be re-created if the change still belongs there.
+
 ## Branding (logo + app name)
 
 Admin → **Settings** → upload PNG / SVG / JPEG / WebP (max 1 MB). The logo renders top-left for every user, including on the login screen (the branding endpoint is intentionally public). Files persist in `data/uploads/`. Replacing or removing the logo deletes the previous file.
