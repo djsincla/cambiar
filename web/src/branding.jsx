@@ -14,6 +14,13 @@ export function BrandingProvider({ children }) {
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+  // Refetch when the tab regains focus so a deployed version bump shows
+  // up in the topbar without needing a hard reload.
+  useEffect(() => {
+    const onFocus = () => { refresh(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refresh]);
 
   return (
     <BrandingContext.Provider value={{ ...branding, refresh }}>

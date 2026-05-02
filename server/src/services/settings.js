@@ -8,14 +8,17 @@ const DEFAULTS = {
   'branding.logo_path': null,
 };
 
-// Read the project version once at startup. Cheap, doesn't need to be live —
-// version changes require a restart anyway.
-const VERSION = (() => {
+// Read the project version on every call. The file is small and the JSON
+// parse is cheap; doing it live means a `package.json` bump shows up in
+// the topbar immediately without needing a process restart (the previous
+// startup-cache approach drifted whenever the server ran longer than a
+// release cycle).
+function readVersion() {
   try {
     const pkg = JSON.parse(readFileSync(resolve(config.repoRoot, 'package.json'), 'utf8'));
     return pkg.version ?? '0.0.0';
   } catch { return '0.0.0'; }
-})();
+}
 
 export function getSetting(key) {
   const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -39,6 +42,6 @@ export function getBranding() {
   return {
     appName: getSetting('branding.app_name') ?? 'cambiar',
     logoUrl: getSetting('branding.logo_path'),
-    version: VERSION,
+    version: readVersion(),
   };
 }
