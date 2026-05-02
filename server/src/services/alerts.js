@@ -34,18 +34,26 @@ export async function runAlertChecks({ now = new Date() } = {}) {
   const fired = [];
   const resolved = [];
 
-  // 1) approval SLA
-  const slaCutoff = new Date(now.getTime() - cfg.approvalSlaMinutes * 60_000).toISOString();
-  const overdue = db.prepare(`
-    SELECT id, title, submitted_at, submitter_id
-    FROM changes
-    WHERE status = 'submitted' AND submitted_at IS NOT NULL AND submitted_at <= ?
-  `).all(slaCutoff);
-  for (const c of overdue) {
+  // 1) approval SLA — per-change-type override wins; otherwise use the
+  // global default. We pull the type's threshold via a single join rather
+  // than per-row lookups.
+  const submitted = db.prepare(`
+    SELECT c.id, c.title, c.submitted_at, c.submitter_id, c.type_key,
+           ct.approval_sla_minutes AS type_sla
+    FROM changes c
+    LEFT JOIN change_types ct ON ct.key = c.type_key
+    WHERE c.status = 'submitted' AND c.submitted_at IS NOT NULL
+  `).all();
+  for (const c of submitted) {
+    const slaMinutes = c.type_sla ?? cfg.approvalSlaMinutes;
+    const cutoffMs = now.getTime() - slaMinutes * 60_000;
+    const submittedMs = Date.parse(c.submitted_at.replace(' ', 'T') + 'Z');
+    if (!Number.isFinite(submittedMs) || submittedMs > cutoffMs) continue;
     if (raiseIfNew('approval_sla', c.id, {
       title: c.title,
       submittedAt: c.submitted_at,
-      slaMinutes: cfg.approvalSlaMinutes,
+      slaMinutes,
+      typeKey: c.type_key,
     })) {
       fired.push({ kind: 'approval_sla', subjectChangeId: c.id, title: c.title });
     }

@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { adminLogin } from './helpers.js';
+import { adminLogin, openAdminPage } from './helpers.js';
 
 test('admin can open the Settings page and see the logo upload form', async ({ page }) => {
   await adminLogin(page);
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await openAdminPage(page, 'Settings');
   await expect(page).toHaveURL(/\/admin\/settings/);
   await expect(page.getByRole('heading', { name: 'Branding' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Logo' })).toBeVisible();
@@ -12,7 +12,7 @@ test('admin can open the Settings page and see the logo upload form', async ({ p
 
 test('admin can open the Groups page and create a group', async ({ page }) => {
   await adminLogin(page);
-  await page.getByRole('link', { name: 'Groups' }).click();
+  await openAdminPage(page, 'Groups');
   await expect(page).toHaveURL(/\/admin\/groups/);
 
   await page.getByRole('button', { name: '+ New group' }).click();
@@ -25,7 +25,7 @@ test('admin can open the Groups page and create a group', async ({ page }) => {
 
 test('admin can open the Change Types page and see the seeded catalog', async ({ page }) => {
   await adminLogin(page);
-  await page.getByRole('link', { name: 'Change Types' }).click();
+  await openAdminPage(page, 'Change types');
   await expect(page).toHaveURL(/\/admin\/change-types/);
   await expect(page.getByRole('heading', { name: 'Change types' })).toBeVisible();
   // server_reboot is one of the seeded keys.
@@ -34,7 +34,7 @@ test('admin can open the Change Types page and see the seeded catalog', async ({
 
 test('admin can open the Users page', async ({ page }) => {
   await adminLogin(page);
-  await page.getByRole('link', { name: 'Users' }).click();
+  await openAdminPage(page, 'Users');
   await expect(page).toHaveURL(/\/admin\/users/);
   await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'admin' }).first()).toBeVisible();

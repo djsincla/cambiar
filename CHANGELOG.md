@@ -4,6 +4,30 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.18.0] — 2026-05-01
+
+A quality-pass release: closes loose ends from recent feature work, adds the missing UI test coverage, and tidies the docs.
+
+### Added
+- **Per-change-type SLA override** (refines 0.15). New nullable `change_types.approval_sla_minutes` column. When set, alerts use this threshold for changes of that type; otherwise they fall back to the global default. The change-type editor exposes a numeric input under "Approval policy"; emergency-bypass types can page sooner than routine ones (e.g. 60 min vs the global 24h default).
+- **Transitive cycle detection on change links** (refines 0.13). Adding `A depends_on B` is now refused if `B` already reaches `A` through any chain of `depends_on` edges, not just the direct `B → A` case. Walks the existing graph in `wouldCreateCycle()`; small graph + the deadlock that a multi-step cycle would cause justifies the extra walk.
+- **Admin nav dropdown.** The 7 admin links collapsed into an `Admin ▾` menu (Users, Groups, Change types, Digests, Email rules, Settings) — frees real estate on tablets and phones. Closes on click-outside / ESC / navigation. **Alerts** stays top-level so the active-count badge nags ops without a click.
+
+### Changed
+- **Disk gc for orphaned attachment files.** Deleting a note now unlinks any threaded attachment files from disk before the FK CASCADE removes the DB rows; deleting a draft change does the same for all its attachments and removes the now-empty per-change uploads dir. Previously these files lingered indefinitely. Refactored the existing single-attachment delete path through the same shared `attachmentFiles.js` helper.
+- **README** refreshed to cover the 0.7–0.17 features (recurring, email ingestion, AD allowlist + sync, change links, iCal feed, alerts, mobile responsive). Test counts updated.
+
+### Internal
+- Migration 016 adds `change_types.approval_sla_minutes` (nullable; existing rows keep `NULL` and inherit the global default — same behavior as before).
+- New `services/attachmentFiles.js` centralizes safe file-unlink + empty-dir cleanup. Rooted at `data/uploads/changes/` so a hostile filename can't escape.
+- `wouldCreateCycle(from, to)` is exported from `services/changeLinks.js` for reuse.
+- Stale completed tasks (#79–85, originally for 0.7/0.8/0.9) cleaned up in the local task list. They had shipped long ago — only the bookkeeping was outstanding.
+
+### Tests
+- 4 new server tests (309 → was 305): per-type SLA, transitive cycle rejection, on-disk file removal on note-delete, and on-disk file removal on change-delete.
+- 4 new Playwright E2E specs covering the gaps from 0.13–0.16: change-links blocking gate, alerts admin page + check-now, iCal subscribe panel + token rotation + public feed fetch, and per-note attachment threading + cascade-on-delete. 23 → 27 specs, all green. Existing specs that drove the topbar Users/Groups/Change Types/etc. links now route through a new `openAdminPage(page, label)` helper to handle the dropdown.
+- Investigated the long-standing `digests.test.js > resolves user-id recipients` "socket hang up" flake — three full back-to-back suite runs all passed clean (305/305 each); leaving as monitored.
+
 ## [0.17.0] — 2026-05-01
 
 ### Changed

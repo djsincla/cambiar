@@ -90,6 +90,7 @@ function TypeForm({ typeId, onClose, onSaved, onError }) {
   const [icon, setIcon] = useState('');
   const [active, setActive] = useState(true);
   const [autoApprove, setAutoApprove] = useState(false);
+  const [approvalSlaMinutes, setApprovalSlaMinutes] = useState('');
   const [fields, setFields] = useState([]);
   const [approverGroupIds, setApproverGroupIds] = useState([]);
   const [hydrated, setHydrated] = useState(isNew);
@@ -98,6 +99,7 @@ function TypeForm({ typeId, onClose, onSaved, onError }) {
     const t = typeData.type;
     setKey(t.key); setName(t.name); setDescription(t.description ?? '');
     setIcon(t.icon ?? ''); setActive(t.active); setAutoApprove(Boolean(t.autoApprove));
+    setApprovalSlaMinutes(t.approvalSlaMinutes ?? '');
     setFields(t.fields ?? []);
     setApproverGroupIds((t.approverGroups ?? []).map(g => g.id));
     setHydrated(true);
@@ -111,9 +113,10 @@ function TypeForm({ typeId, onClose, onSaved, onError }) {
 
   const submit = (e) => {
     e.preventDefault();
+    const sla = approvalSlaMinutes === '' ? null : Number(approvalSlaMinutes);
     const body = isNew
-      ? { key, name, description: description || null, icon: icon || null, fields, approverGroupIds: autoApprove ? [] : approverGroupIds, autoApprove }
-      : { name, description: description || null, icon: icon || null, fields, approverGroupIds: autoApprove ? [] : approverGroupIds, autoApprove, active };
+      ? { key, name, description: description || null, icon: icon || null, fields, approverGroupIds: autoApprove ? [] : approverGroupIds, autoApprove, approvalSlaMinutes: sla }
+      : { name, description: description || null, icon: icon || null, fields, approverGroupIds: autoApprove ? [] : approverGroupIds, autoApprove, active, approvalSlaMinutes: sla };
     if (isNew) body.key = key;
     save.mutate(body);
   };
@@ -169,6 +172,19 @@ function TypeForm({ typeId, onClose, onSaved, onError }) {
 
       {!autoApprove && (
         <>
+          <label>Approval SLA override (minutes)</label>
+          <input
+            aria-label="Approval SLA minutes"
+            type="number" min={1} max={43200}
+            value={approvalSlaMinutes}
+            onChange={e => setApprovalSlaMinutes(e.target.value)}
+            placeholder="Leave blank to use the global default"
+            style={{ maxWidth: 240 }}
+          />
+          <div className="muted" style={{ marginTop: 4, marginBottom: 12, fontSize: 13 }}>
+            Optional. If set, alerts fire when a change of this type has been waiting in <em>submitted</em> for this many minutes. Use a smaller value (e.g. 60) for emergency-bypass types and a larger one (or leave blank) for routine types.
+          </div>
+
           <label>Approver groups</label>
           <div className="muted" style={{ marginBottom: 8 }}>Any one member of any selected group can approve. Leave empty to fall back to the legacy "approver" role.</div>
           <div style={{ background: 'var(--panel-2)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>

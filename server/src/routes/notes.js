@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { requireAuth, blockIfPasswordChangeRequired } from '../middleware/auth.js';
 import { recordAudit } from '../services/audit.js';
+import { purgeFilesForAttachments } from '../services/attachmentFiles.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, blockIfPasswordChangeRequired);
@@ -92,8 +93,11 @@ router.delete('/:noteId', (req, res) => {
   if (note.user_id !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'only the author or an admin can delete this note' });
   }
+  // Unlink any threaded attachments' on-disk files BEFORE the cascade DELETE
+  // removes their DB rows — once they're gone, we can't find the filenames.
+  const purged = purgeFilesForAttachments('note_id = ?', [noteId]);
   db.prepare('DELETE FROM change_notes WHERE id = ?').run(noteId);
-  recordAudit({ changeId: change.id, userId: req.user.id, action: 'note_delete', details: { noteId } });
+  recordAudit({ changeId: change.id, userId: req.user.id, action: 'note_delete', details: { noteId, attachmentsPurged: purged } });
   res.json({ ok: true });
 });
 

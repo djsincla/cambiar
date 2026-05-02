@@ -1,4 +1,6 @@
 import { describe, test, expect, beforeEach } from 'vitest';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { resetDb, createUser, agentFor, row, rows } from './helpers.js';
 
 const REBOOT_FIELDS = { host: 'h.local', reason: 'r', expected_downtime_minutes: 5 };
@@ -205,6 +207,36 @@ describe('Attachments threaded under notes', () => {
     expect(rows('SELECT id FROM change_attachments WHERE note_id = ?', note.id)).toHaveLength(2);
     await a.delete(`/api/changes/${id}/notes/${note.id}`);
     expect(rows('SELECT id FROM change_attachments WHERE note_id = ?', note.id)).toHaveLength(0);
+  });
+
+  test('deleting a note unlinks threaded files from disk (not just DB rows)', async () => {
+    const a = await adminAgent();
+    const id = await setupChangeBy(a);
+    const note = (await a.post(`/api/changes/${id}/notes`).send({ body: 'evidence' })).body.note;
+    const up = (await a.post(`/api/changes/${id}/attachments`)
+      .attach('file', PNG, 'shot.png')
+      .field('noteId', String(note.id))).body.attachment;
+
+    const onDisk = resolve(process.env.DATA_DIR, 'uploads/changes', String(id), up.filename);
+    expect(existsSync(onDisk)).toBe(true);
+
+    await a.delete(`/api/changes/${id}/notes/${note.id}`);
+    expect(existsSync(onDisk)).toBe(false);
+  });
+
+  test('deleting a draft change unlinks all its attachment files', async () => {
+    const a = await adminAgent();
+    const id = await setupChangeBy(a);
+    const a1 = (await a.post(`/api/changes/${id}/attachments`).attach('file', PNG, 'a.png')).body.attachment;
+    const a2 = (await a.post(`/api/changes/${id}/attachments`).attach('file', PNG, 'b.png')).body.attachment;
+
+    const p1 = resolve(process.env.DATA_DIR, 'uploads/changes', String(id), a1.filename);
+    const p2 = resolve(process.env.DATA_DIR, 'uploads/changes', String(id), a2.filename);
+    expect(existsSync(p1) && existsSync(p2)).toBe(true);
+
+    await a.delete(`/api/changes/${id}`);
+    expect(existsSync(p1)).toBe(false);
+    expect(existsSync(p2)).toBe(false);
   });
 
   test('rejects malformed noteId', async () => {

@@ -43,3 +43,26 @@ export async function adminLogin(page) {
 
   await expect(page).toHaveURL(/\/changes/);
 }
+
+/**
+ * Click an admin link from the topbar's Admin ▾ dropdown.
+ * The admin links live inside a menu since 0.18; specs that worked before
+ * by clicking the link directly use this helper instead.
+ *
+ *   await openAdminPage(page, 'Users');
+ *   await openAdminPage(page, 'Change types');
+ *
+ * Special case: Alerts is still a top-level nav item (not in the dropdown).
+ */
+export async function openAdminPage(page, label) {
+  if (/^alerts$/i.test(label)) {
+    await page.getByRole('link', { name: /^Alerts/ }).click();
+    return;
+  }
+  await page.getByRole('button', { name: /^Admin/ }).click();
+  await page.getByRole('menuitem', { name: new RegExp(`^${escapeRegex(label)}$`, 'i') }).click();
+}
+
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

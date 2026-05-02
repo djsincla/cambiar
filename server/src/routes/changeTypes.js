@@ -40,6 +40,7 @@ const createSchema = z.object({
   fields: z.array(fieldSchema).default([]),
   approverGroupIds: z.array(z.number().int().positive()).optional(),
   autoApprove: z.boolean().optional(),
+  approvalSlaMinutes: z.number().int().positive().max(60 * 24 * 30).optional().nullable(),
 });
 
 function rejectAutoApproveWithGroups(autoApprove, approverGroupIds) {
@@ -82,6 +83,7 @@ const patchSchema = z.object({
   active: z.boolean().optional(),
   approverGroupIds: z.array(z.number().int().positive()).optional(),
   autoApprove: z.boolean().optional(),
+  approvalSlaMinutes: z.number().int().positive().max(60 * 24 * 30).nullable().optional(),
 }).strict();
 
 router.patch('/:id', requireRole('admin'), (req, res) => {

@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { adminLogin } from './helpers.js';
+import { adminLogin, openAdminPage } from './helpers.js';
 
 test('admin can create a digest schedule and see it listed', async ({ page }) => {
   await adminLogin(page);
 
-  await page.getByRole('link', { name: 'Digests', exact: true }).click();
+  await openAdminPage(page, 'Digests');
   await expect(page).toHaveURL(/\/admin\/digests/);
   await expect(page.getByRole('heading', { name: 'Digest schedules' })).toBeVisible();
 

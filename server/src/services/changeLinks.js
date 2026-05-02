@@ -36,13 +36,13 @@ export function addLink({ fromChangeId, toChangeId, kind, userId }) {
   if (!a || !b) {
     const e = new Error('change not found'); e.code = 'not_found'; throw e;
   }
-  // Direct cycle on depends_on: if B already depends on A, refuse A→B.
+  // Cycle on depends_on: walk the existing graph from `toChangeId` and
+  // refuse if `fromChangeId` is reachable. Catches both the direct case
+  // (B depends_on A → refuse A depends_on B) and longer chains
+  // (C depends_on B depends_on A → refuse A depends_on C).
   if (kind === 'depends_on') {
-    const reverse = db.prepare(
-      `SELECT id FROM change_links WHERE from_change_id = ? AND to_change_id = ? AND kind = 'depends_on'`
-    ).get(toChangeId, fromChangeId);
-    if (reverse) {
-      const e = new Error('that change already depends on this one — cannot create a circular dependency');
+    if (wouldCreateCycle(fromChangeId, toChangeId)) {
+      const e = new Error('that would create a circular dependency');
       e.code = 'cycle'; throw e;
     }
   }
@@ -63,6 +63,28 @@ export function addLink({ fromChangeId, toChangeId, kind, userId }) {
     }
     throw err;
   }
+}
+
+/**
+ * Would adding `from depends_on to` create a cycle? Yes iff `from` is
+ * already reachable from `to` via the existing depends_on graph (BFS).
+ * Self-link (from === to) is also a "cycle" but caller catches that earlier.
+ */
+export function wouldCreateCycle(from, to) {
+  if (from === to) return true;
+  const stmt = db.prepare(
+    `SELECT to_change_id FROM change_links WHERE from_change_id = ? AND kind = 'depends_on'`
+  );
+  const seen = new Set();
+  const queue = [to];
+  while (queue.length) {
+    const node = queue.shift();
+    if (node === from) return true;
+    if (seen.has(node)) continue;
+    seen.add(node);
+    for (const r of stmt.all(node)) queue.push(r.to_change_id);
+  }
+  return false;
 }
 
 export function removeLink(linkId) {

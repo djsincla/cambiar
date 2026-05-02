@@ -30,15 +30,44 @@ API-first change management for small workshops. Node.js + React, local or Activ
 
 ## Features
 
-- **Local + AD/LDAP auth** — bcrypt-hashed local accounts, plus Active Directory bind/search with group→role mapping. Local takes precedence on username collisions, so the bootstrap admin always works.
-- **Admin-managed change types** — seeded from `config/change-types.json` on first run, then editable through the admin UI: rename, edit fields (string/text/number/select/boolean), add/remove, soft-delete when in use.
+### Auth and access
+- **Local + AD/LDAP auth** — bcrypt-hashed local accounts, plus Active Directory bind/search. Local takes precedence on username collisions, so the bootstrap admin always works.
+- **AD allowlist** — `auth.ad.allowedGroups` gates login on AD group membership; only users in one of the listed groups can sign in even if their AD password is correct.
+- **AD group sync** — `auth.ad.groupSync` reconciles Cambiar group memberships and roles from AD on every login. Synced groups are flagged `ad_managed` and become read-only in the API; AD is the source of truth.
 - **Approver groups** — many-to-many user/group membership; any-one-group approval (membership in any group assigned to a change type lets you approve). Admin override always works. Submitter can never approve their own change.
-- **Workflow with audit** — draft → submitted → approved → implemented → closed, with rejected and rolled_back branches. Every transition is captured in an audit log.
-- **Notifications** — email via SMTP (nodemailer); SMS via Twilio (lightweight REST adapter, no SDK). Per-event channel filtering in `config/notifications.json`.
-- **Configurable branding** — admin-uploadable logo (PNG / SVG / JPEG / WebP, max 1 MB) and app name. The logo renders top-left for everyone, including the login screen.
-- **API-first** — every endpoint has tests, the README endpoint list and `GET /api` are kept in sync. 131 vitest tests + 10 Playwright E2E tests in CI.
+
+### Lifecycle and workflow
+- **Workflow with audit** — `draft → submitted → approved → in_progress → implemented → closed`, with `rejected` and `rolled_back` branches. Every transition is captured in an audit log.
+- **Auto-approve change types** — flag a type to skip the approval gate (`draft → approved` in one step) for routine, low-risk work.
+- **Recurring changes** — mark a change as a parent with a cron schedule; at each fire, a child is spawned with the parent's blueprint and threaded back via `parent_change_id`. Composes with auto-approve for fully unattended scheduled work.
+- **Linked changes** — `depends_on` (directional, gates `/start` and `/implement` until prereqs are implemented or closed; transitive cycles refused) and `relates_to` (symmetric, soft).
+- **Planned + actual duration** — track expected and observed implementation time; variance shown on the change detail.
+
+### Authoring and content
+- **Admin-managed change types** — seeded from `config/change-types.json` on first run, then editable through the admin UI: rename, edit fields (string/text/number/select/boolean), per-type approval-SLA override, soft-delete when in use.
+- **Notes + attachments** — chronological markdown notes per change; file uploads up to 10 MB (images, PDFs, text/CSV/JSON). Attachments can be threaded under a specific note (deleted with the note) or change-wide.
+- **Templates** — save a change as a template, copy a change as a new draft, or instantiate a fresh draft from a template.
+
+### Notifications and alerts
+- **Email + SMS** — email via SMTP (nodemailer); SMS via Twilio. Per-event channel filtering in `config/notifications.json`.
+- **Inbound email engine** — IMAP poller turns each message into a configurable action: `create_change`, `transition` (submit/approve/start/etc.), or `add_note`. Idempotent by `Message-ID`.
+- **Scheduled email digests** — admin-defined cron schedules render upcoming-changes digests to a recipient list (free-form addresses or user-id resolved emails).
+- **Operational alerts** — scheduled checker raises and resolves alerts when an approval has been pending past the SLA threshold (global default + per-change-type override) or a recurring parent's last fire is older than the most recent expected fire. Notifications go to admin emails; resolves automatically when the underlying state clears.
+- **iCal feed** — per-user tokenized URL for `/upcoming` so workshop members subscribe from Google/Apple Calendar without logging in.
+
+### UX
+- **Configurable branding** — admin-uploadable logo (PNG / SVG / JPEG / WebP, max 1 MB) and app name. Renders top-left for everyone, including the login screen.
+- **Light + dark theme** — toggleable, persisted per browser.
+- **Mobile responsive** — topbar wraps on phones, calendar week view scrolls horizontally inside its panel, tables degrade to horizontal scroll instead of busting the layout.
+- **Calendar** — month / week / day / list views for upcoming changes; status filter; week and day use a time-grid with blocks sized by planned duration.
+
+### Engineering
+- **API-first** — every endpoint has tests; the README endpoint list and `GET /api` are kept in sync.
 - **Single-container deploy** — multi-stage Dockerfile (build web, install server, slim runtime as non-root). `docker compose up -d --build` and you're running.
 - **Apache-2.0 licensed.**
+
+### Test coverage
+~310 vitest server tests + Playwright end-to-end specs run in CI on every push. See [Testing](#testing--the-api-contract).
 
 ## Quick start (Docker)
 

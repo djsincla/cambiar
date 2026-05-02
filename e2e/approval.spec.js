@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { adminLogin, ADMIN_NEW_PW } from './helpers.js';
+import { adminLogin, ADMIN_NEW_PW, openAdminPage } from './helpers.js';
 
 test('approver inbox: admin sees submitted change in Approvals, approves it, badge clears', async ({ page }) => {
   await adminLogin(page);
 
   // Create a submitter "bob" so we have someone other than admin to submit a change.
-  await page.getByRole('link', { name: 'Users' }).click();
+  await openAdminPage(page, 'Users');
   await page.getByRole('button', { name: '+ New user' }).click();
   await page.getByLabel('Username', { exact: true }).fill('bob');
   await page.getByLabel('Initial password', { exact: true }).fill('BobInitialPwd1234');
@@ -69,7 +69,7 @@ test('auto-approve: admin marks a type auto-approve, submission goes straight to
   await adminLogin(page);
 
   // Open Change Types admin → Edit server_reboot → check Auto-approve → save.
-  await page.getByRole('link', { name: 'Change Types' }).click();
+  await openAdminPage(page, 'Change types');
   // Find the row for server_reboot and click Edit.
   await page.locator('tr', { has: page.locator('code', { hasText: 'server_reboot' }) }).getByRole('button', { name: 'Edit' }).click();
   await page.getByLabel('Auto-approve', { exact: true }).check();

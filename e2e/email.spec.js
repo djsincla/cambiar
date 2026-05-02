@@ -1,10 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { adminLogin } from './helpers.js';
+import { adminLogin, openAdminPage } from './helpers.js';
 
 test('admin can create an email rule from /admin/email and see it listed', async ({ page }) => {
   await adminLogin(page);
 
-  await page.getByRole('link', { name: 'Email', exact: true }).click();
+  await openAdminPage(page, 'Email rules');
   await expect(page).toHaveURL(/\/admin\/email/);
   await expect(page.getByRole('heading', { name: 'Email ingestion' })).toBeVisible();
 

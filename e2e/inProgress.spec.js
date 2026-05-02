@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { adminLogin, ADMIN_NEW_PW } from './helpers.js';
+import { adminLogin, ADMIN_NEW_PW, openAdminPage } from './helpers.js';
 
 test('approved → start → implement flow with audit and badge transitions', async ({ page }) => {
   await adminLogin(page);
 
   // Need a second user so admin can approve someone else's submission.
-  await page.getByRole('link', { name: 'Users' }).click();
+  await openAdminPage(page, 'Users');
   await page.getByRole('button', { name: '+ New user' }).click();
   await page.getByLabel('Username', { exact: true }).fill('carl');
   await page.getByLabel('Initial password', { exact: true }).fill('CarlInitialPwd1234');

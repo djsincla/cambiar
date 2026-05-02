@@ -16,6 +16,7 @@ import { registerRecurringChange, unregisterRecurringChange } from '../services/
 import {
   addLink, removeLink, getLink, getLinksForChange, getBlockingDeps, LINK_KINDS,
 } from '../services/changeLinks.js';
+import { purgeFilesForAttachments, tryRemoveEmptyChangeDir } from '../services/attachmentFiles.js';
 
 const router = Router();
 router.use(requireAuth, blockIfPasswordChangeRequired);
@@ -252,7 +253,11 @@ router.delete('/:id', (req, res) => {
   if (existing.submitter_id !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'not your change' });
   }
+  // Reclaim disk space for any uploaded attachments before the cascade
+  // removes the DB rows, then drop the per-change uploads dir if empty.
+  purgeFilesForAttachments('change_id = ?', [id]);
   db.prepare('DELETE FROM changes WHERE id = ?').run(id);
+  tryRemoveEmptyChangeDir(id);
   res.json({ ok: true });
 });
 

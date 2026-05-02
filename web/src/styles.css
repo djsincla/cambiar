@@ -101,6 +101,16 @@ tbody tr:hover { background: var(--panel-2); }
 .tabs .tab-count { display: inline-block; margin-left: 8px; background: var(--accent); color: white; padding: 1px 8px; border-radius: 999px; font-size: 12px; }
 
 .nav-badge { display: inline-block; margin-left: 6px; background: var(--accent); color: white; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.alerts-link { display: inline-flex; align-items: center; }
+
+/* Admin dropdown — collapses 6 admin links into a menu. */
+.admin-menu { position: relative; display: inline-block; }
+.admin-menu-toggle { background: transparent; border: none; color: var(--muted); padding: 6px 0; cursor: pointer; font-size: inherit; font-family: inherit; }
+.admin-menu-toggle:hover, .admin-menu-toggle.active { color: var(--text); }
+.admin-menu-panel { position: absolute; top: calc(100% + 4px); left: 0; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); min-width: 180px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); z-index: 50; padding: 4px 0; }
+.admin-menu-item { display: block; padding: 8px 14px; color: var(--text); text-decoration: none; font-size: 14px; }
+.admin-menu-item:hover { background: var(--panel-2); }
+.admin-menu-item.active { color: var(--accent); }
 .approvals-link { display: inline-flex; align-items: center; }
 
 .icon-button { background: transparent; border: 1px solid transparent; color: var(--text); padding: 4px 8px; font-size: 16px; line-height: 1; cursor: pointer; border-radius: var(--radius); }

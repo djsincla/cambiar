@@ -90,6 +90,20 @@ describe('change links — CRUD', () => {
     expect(reverse.body.error).toMatch(/circular/i);
   });
 
+  test('transitive cycle rejected (A→B→C, C→A)', async () => {
+    const { bob, carol } = await ctx();
+    const a = await makeApproved(bob, carol);
+    const b = await makeApproved(bob, carol);
+    const c = await makeApproved(bob, carol);
+    // A depends on B, B depends on C — so the chain is A→B→C.
+    await bob.agent.post(`/api/changes/${a}/links`).send({ toChangeId: b, kind: 'depends_on' });
+    await bob.agent.post(`/api/changes/${b}/links`).send({ toChangeId: c, kind: 'depends_on' });
+    // Now adding C depends on A would close the loop A→B→C→A.
+    const cyc = await bob.agent.post(`/api/changes/${c}/links`).send({ toChangeId: a, kind: 'depends_on' });
+    expect(cyc.status).toBe(409);
+    expect(cyc.body.error).toMatch(/circular/i);
+  });
+
   test('non-owner non-admin cannot link', async () => {
     const { bob, carol, eve } = await ctx();
     const a = await makeApproved(bob, carol);

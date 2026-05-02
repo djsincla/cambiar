@@ -73,6 +73,23 @@ describe('approval SLA alerts', () => {
     expect(open.length).toBe(1);
   });
 
+  test('per-change-type SLA override fires sooner than the global default', async () => {
+    const { admin, bob } = await ctx();
+    // Set a 30-minute SLA on the server_reboot type — much shorter than the
+    // 24h global default. A change submitted an hour ago should trip it.
+    const types = (await admin.get('/api/change-types')).body.types;
+    const serverReboot = types.find(t => t.key === 'server_reboot');
+    await admin.patch(`/api/change-types/${serverReboot.id}`).send({ approvalSlaMinutes: 30 });
+
+    const id = await submitChange(bob.agent, { title: 'urgent-pending' });
+    db.prepare(`UPDATE changes SET submitted_at = datetime('now', '-1 hours') WHERE id = ?`).run(id);
+
+    const r = await runAlertChecks();
+    const alert = listAlerts({ status: 'active' }).find(a => a.subjectChangeId === id && a.kind === 'approval_sla');
+    expect(alert).toBeDefined();
+    expect(alert.details.slaMinutes).toBe(30);
+  });
+
   test('resolves when the change moves out of submitted (e.g. is approved)', async () => {
     const { admin, bob } = await ctx();
     const id = await submitChange(bob.agent);

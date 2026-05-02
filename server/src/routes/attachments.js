@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { mkdirSync, unlinkSync, existsSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { resolve, extname } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { config } from '../config.js';
 import { db } from '../db/index.js';
 import { requireAuth, blockIfPasswordChangeRequired } from '../middleware/auth.js';
 import { recordAudit } from '../services/audit.js';
+import { unlinkAttachmentFile } from '../services/attachmentFiles.js';
 
 const router = Router({ mergeParams: true });
 router.use(requireAuth, blockIfPasswordChangeRequired);
@@ -143,10 +144,7 @@ router.delete('/:attachmentId', (req, res) => {
     return res.status(403).json({ error: 'only the uploader or an admin can delete this attachment' });
   }
 
-  const path = resolve(UPLOAD_ROOT, String(change.id), att.filename);
-  if (existsSync(path) && path.startsWith(UPLOAD_ROOT)) {
-    try { unlinkSync(path); } catch {}
-  }
+  unlinkAttachmentFile(attId);
   db.prepare('DELETE FROM change_attachments WHERE id = ?').run(attId);
   recordAudit({ changeId: change.id, userId: req.user.id, action: 'attachment_delete', details: { attachmentId: attId } });
   res.json({ ok: true });

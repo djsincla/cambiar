@@ -39,6 +39,7 @@ function rowToType(r, includeApproverGroups = true) {
     fields: r.fields_json ? JSON.parse(r.fields_json) : [],
     active: Boolean(r.active),
     autoApprove: Boolean(r.auto_approve),
+    approvalSlaMinutes: r.approval_sla_minutes ?? null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -72,12 +73,12 @@ export function getChangeTypeById(id) {
   return r ? rowToType(r) : null;
 }
 
-export function createChangeType({ key, name, description, icon, fields, approverGroupIds, autoApprove }) {
+export function createChangeType({ key, name, description, icon, fields, approverGroupIds, autoApprove, approvalSlaMinutes }) {
   const tx = db.transaction(() => {
     const info = db.prepare(`
-      INSERT INTO change_types (key, name, description, icon, fields_json, active, auto_approve)
-      VALUES (?, ?, ?, ?, ?, 1, ?)
-    `).run(key, name, description ?? null, icon ?? null, JSON.stringify(fields ?? []), autoApprove ? 1 : 0);
+      INSERT INTO change_types (key, name, description, icon, fields_json, active, auto_approve, approval_sla_minutes)
+      VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+    `).run(key, name, description ?? null, icon ?? null, JSON.stringify(fields ?? []), autoApprove ? 1 : 0, approvalSlaMinutes ?? null);
     if (Array.isArray(approverGroupIds) && approverGroupIds.length) {
       const ins = db.prepare('INSERT INTO change_type_approver_groups (change_type_id, group_id) VALUES (?, ?)');
       for (const gid of approverGroupIds) ins.run(info.lastInsertRowid, gid);
@@ -98,6 +99,7 @@ export function updateChangeType(id, patch) {
       if (k in patch) { sets.push(`${col} = ?`); params.push(k === 'active' ? (patch[k] ? 1 : 0) : patch[k]); }
     }
     if ('autoApprove' in patch) { sets.push('auto_approve = ?'); params.push(patch.autoApprove ? 1 : 0); }
+    if ('approvalSlaMinutes' in patch) { sets.push('approval_sla_minutes = ?'); params.push(patch.approvalSlaMinutes); }
     if ('fields' in patch) {
       sets.push('fields_json = ?');
       params.push(JSON.stringify(patch.fields));

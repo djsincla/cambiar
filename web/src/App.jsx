@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate, NavLink, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './auth.jsx';
 import { useBranding } from './branding.jsx';
 import { api } from './api.js';
@@ -118,16 +119,12 @@ function TopBar() {
         <NavLink to="/changes/new" className={({ isActive }) => isActive ? 'active' : ''}>New</NavLink>
         {user.role === 'admin' && (
           <>
-            <NavLink to="/admin/users" className={({ isActive }) => isActive ? 'active' : ''}>Users</NavLink>
-            <NavLink to="/admin/groups" className={({ isActive }) => isActive ? 'active' : ''}>Groups</NavLink>
-            <NavLink to="/admin/change-types" className={({ isActive }) => isActive ? 'active' : ''}>Change Types</NavLink>
-            <NavLink to="/admin/digests" className={({ isActive }) => isActive ? 'active' : ''}>Digests</NavLink>
-            <NavLink to="/admin/email" className={({ isActive }) => isActive ? 'active' : ''}>Email</NavLink>
-            <NavLink to="/admin/alerts" className="approvals-link">
+            {/* Alerts stays top-level so the badge nags ops without a click. */}
+            <NavLink to="/admin/alerts" className="alerts-link">
               Alerts
               {activeAlerts > 0 && <span className="nav-badge" data-testid="alerts-badge">{activeAlerts}</span>}
             </NavLink>
-            <NavLink to="/admin/settings" className={({ isActive }) => isActive ? 'active' : ''}>Settings</NavLink>
+            <AdminMenu />
           </>
         )}
       </nav>
@@ -148,5 +145,65 @@ function TopBar() {
         <button className="secondary" onClick={async () => { await logout(); nav('/login'); }}>Sign out</button>
       </div>
     </header>
+  );
+}
+
+const ADMIN_LINKS = [
+  { to: '/admin/users',        label: 'Users' },
+  { to: '/admin/groups',       label: 'Groups' },
+  { to: '/admin/change-types', label: 'Change types' },
+  { to: '/admin/digests',      label: 'Digests' },
+  { to: '/admin/email',        label: 'Email rules' },
+  { to: '/admin/settings',     label: 'Settings' },
+];
+
+function AdminMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const location = useLocation();
+  const onAdminPage = ADMIN_LINKS.some(l => location.pathname.startsWith(l.to));
+
+  // Close on outside click + ESC.
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  // Close when navigating from inside the menu.
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+
+  return (
+    <div className="admin-menu" ref={ref}>
+      <button
+        type="button"
+        className={`admin-menu-toggle ${onAdminPage ? 'active' : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen(s => !s)}
+      >
+        Admin <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="admin-menu-panel" role="menu">
+          {ADMIN_LINKS.map(l => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              className={({ isActive }) => `admin-menu-item ${isActive ? 'active' : ''}`}
+              role="menuitem"
+            >
+              {l.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
