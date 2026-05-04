@@ -4,6 +4,14 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.20.0] — 2026-05-04
+
+### Added
+- **Standalone landing page** at `marketing/index.html` for sharing the project before the repository goes public. Self-contained HTML + CSS — no JS framework, no analytics, no third-party requests, no build step. Hero, capabilities tour grouped by what they enable, an honest "what it isn't" section, a quick-start snippet, and a "shape of the project" footer. Deployable to GitHub Pages, Netlify, or any static host.
+
+### Changed
+- App-name default in the running workshop instance is `cambiar.world` (was `cambiar`). The display name lives in `branding.app_name` and is editable through Admin → Settings; this is just the new default for fresh installs.
+
 ## [0.19.0] — 2026-05-01
 
 ### Added

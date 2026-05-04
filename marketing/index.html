@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>cambiar.world — change management for small workshops</title>
+  <meta name="description" content="Lightweight change management built for small VFX and post-production workshops. Local + Active Directory auth, cron-driven recurring changes, email ingestion, calendar push, single-container deploy." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">change management · for the people who actually do the work</p>
+    <h1>cambiar.world</h1>
+    <p class="tagline">
+      A small, honest change-management app built for a VFX workshop —
+      not for an enterprise rollout, not for a procurement committee,
+      not for a Jira instance that's already lost.
+    </p>
+    <p class="meta">
+      Apache-2.0 · Node · SQLite · single-container deploy · API-first
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+
+<section class="block">
+  <h2>What it is</h2>
+  <p>
+    Cambiar (Spanish for <em>to change</em>) is a self-hosted change-management
+    application. You define your change types in JSON, the workshop submits
+    changes against them, the right people approve, and the audit log keeps
+    score. Notifications go out by email, by SMS, or to whatever calendar the
+    workshop already lives in.
+  </p>
+  <p>
+    It runs as a single container next to your other infrastructure. There's
+    no SaaS dependency, no "talk to sales", no per-seat licensing. The data
+    file lives on your disk; you can <code>scp</code> it.
+  </p>
+</section>
+
+<section class="block">
+  <h2>Who it's for</h2>
+  <ul class="who">
+    <li>
+      <strong>Small VFX / post-production / studio IT teams.</strong>
+      Where changes are real (server reboots, render-farm updates, firewall
+      rules, storage moves) but the team is small enough that a heavy ITSM
+      platform is overkill — and a Slack thread isn't enough.
+    </li>
+    <li>
+      <strong>Workshops who want auditability without ceremony.</strong>
+      Every transition is logged, every approval is recorded, every
+      automated change carries the source of its automation in the audit
+      trail. But day-to-day, the UI gets out of your way.
+    </li>
+    <li>
+      <strong>Teams that already have AD or just want local accounts.</strong>
+      Both work. The bootstrap admin keeps you unlocked even if AD is down.
+    </li>
+  </ul>
+</section>
+
+<section class="block">
+  <h2>What's in the box</h2>
+
+  <div class="grid">
+
+    <article>
+      <h3>Lifecycle &amp; audit</h3>
+      <p>
+        <code>draft → submitted → approved → in_progress → implemented →
+        closed</code>, with <code>rejected</code> and <code>rolled_back</code>
+        branches. Every transition is captured: who, when, from-status, to-status,
+        any free-form comment.
+      </p>
+      <p class="muted">
+        Auto-approve change types skip the approval gate — for routine,
+        well-understood work that doesn't need a human in the loop.
+      </p>
+    </article>
+
+    <article>
+      <h3>Approver groups</h3>
+      <p>
+        Many-to-many user/group membership. Any one member of any group
+        assigned to a change type can approve. Submitter can never approve
+        their own change. Admin always has override.
+      </p>
+      <p class="muted">
+        Optional Active Directory <em>group sync</em>: AD owns the group
+        membership; Cambiar reconciles on every login.
+      </p>
+    </article>
+
+    <article>
+      <h3>Notes &amp; attachments</h3>
+      <p>
+        Markdown notes per change with full edit history. File attachments
+        (images, PDFs, text/CSV/JSON) up to 10&nbsp;MB. Attachments can be
+        threaded under a specific note or attached to the change as a whole.
+      </p>
+      <p class="muted">
+        Drag a screenshot into the note where you describe what you saw.
+      </p>
+    </article>
+
+    <article>
+      <h3>Templates</h3>
+      <p>
+        Save a change as a template, copy a change as a new draft, instantiate
+        a fresh draft from a template. The change type, fields, planned
+        duration, and description carry forward.
+      </p>
+      <p class="muted">
+        For the work you do every Tuesday at 02:00.
+      </p>
+    </article>
+
+    <article>
+      <h3>Recurring changes</h3>
+      <p>
+        Mark a change as a recurring <em>parent</em> with a cron schedule and a
+        timezone. At each fire, a child is spawned with the parent's blueprint
+        and threaded back via <code>parent_change_id</code>.
+      </p>
+      <p class="muted">
+        Composes with auto-approve and the email engine for fully unattended
+        scheduled work.
+      </p>
+    </article>
+
+    <article>
+      <h3>Linked changes</h3>
+      <p>
+        <code>depends_on</code> (directional, gates Start/Implement until
+        prereqs are implemented or closed; transitive cycles refused) and
+        <code>relates_to</code> (symmetric, soft).
+      </p>
+      <p class="muted">
+        For changes that line up like dominoes — &ldquo;don't start the
+        firewall change until the storage migration is verified.&rdquo;
+      </p>
+    </article>
+
+    <article>
+      <h3>Inbound email</h3>
+      <p>
+        IMAP poller turns each incoming message into a configurable action:
+        <code>create_change</code>, <code>transition</code> (submit / approve /
+        start / etc.), or <code>add_note</code> on a referenced change.
+        Idempotent by Message-ID — replays don't double-create.
+      </p>
+      <p class="muted">
+        Wire monitoring alerts straight to Cambiar. Forward an outage email and
+        a change opens for it automatically.
+      </p>
+    </article>
+
+    <article>
+      <h3>Scheduled digests</h3>
+      <p>
+        Admin-defined cron schedules render upcoming-changes digests to a
+        recipient list (free-form addresses or user-id resolved emails).
+        Use it to brief on-call before a maintenance window.
+      </p>
+    </article>
+
+    <article>
+      <h3>Operational alerts</h3>
+      <p>
+        A scheduled checker raises and resolves alerts when an approval has
+        been pending past the SLA threshold (with per-change-type overrides),
+        or when a recurring parent's last fire is older than the most recent
+        expected fire.
+      </p>
+      <p class="muted">
+        It tells you about the things that quietly didn't happen.
+      </p>
+    </article>
+
+    <article>
+      <h3>Calendar &amp; scheduling</h3>
+      <p>
+        Month / week / day / list views for upcoming changes. Week and day
+        use a time-grid with blocks sized by planned duration; status filter;
+        click a chip to jump to the change.
+      </p>
+      <p class="muted">
+        Mobile-aware: the week view scrolls horizontally on phones rather
+        than crushing the layout.
+      </p>
+    </article>
+
+    <article>
+      <h3>iCal subscription</h3>
+      <p>
+        Each user gets a personal tokenized URL. Subscribe from Google
+        Calendar, Apple Calendar, or anything that speaks RFC&nbsp;5545 — and
+        upcoming changes show up alongside their other commitments.
+      </p>
+    </article>
+
+    <article>
+      <h3>Google Calendar push</h3>
+      <p>
+        For workshops that want changes to land directly in a shared Google
+        Calendar without each user having to subscribe: a service-account-driven
+        background reconciler inserts, updates, and deletes events as
+        changes move through the lifecycle.
+      </p>
+    </article>
+
+    <article>
+      <h3>Branding</h3>
+      <p>
+        Admin-uploadable logo (PNG / SVG / JPEG / WebP) and app name.
+        Renders top-left for everyone, including the login screen. Light
+        and dark themes, persisted per browser.
+      </p>
+    </article>
+
+    <article>
+      <h3>API-first</h3>
+      <p>
+        Every UI action is a documented HTTP endpoint. Build your own
+        integrations, scripts, or Slack bots against the same surface the
+        web client uses — no internal-only RPCs.
+      </p>
+    </article>
+
+  </div>
+</section>
+
+<section class="block">
+  <h2>What it isn't</h2>
+  <p>
+    Honesty is part of the design. Cambiar <strong>is not</strong>:
+  </p>
+  <ul>
+    <li>A general-purpose ticketing system. Use Jira, Linear, GitHub Issues.</li>
+    <li>An ITIL-certified ITSM platform. We borrow the vocabulary, not the certification.</li>
+    <li>A CMDB. There's no asset inventory; the workshop already knows what it owns.</li>
+    <li>A multi-tenant SaaS. One container, one workshop. If you need tenancy, you're past our scope.</li>
+    <li>A fit for 500-person organizations. Tools that work at that scale don't usually work at ours.</li>
+  </ul>
+</section>
+
+<section class="block">
+  <h2>Trying it</h2>
+  <pre><code>git clone &lt;repo&gt; cambiar &amp;&amp; cd cambiar
+cp .env.example .env
+# set JWT_SECRET to something long and random
+docker compose up -d --build
+# open http://localhost:3000
+# log in: admin / admin  (forced password change on first login)</code></pre>
+  <p>
+    SQLite database persists in <code>./data/</code>. Configuration in
+    <code>./config/</code> (mounted read-only). Restart to pick up edits to
+    <code>auth.json</code> or <code>notifications.json</code>.
+  </p>
+</section>
+
+<section class="block">
+  <h2>The shape of the project</h2>
+  <ul>
+    <li>Node 20+ on Express, SQLite via <code>better-sqlite3</code>.</li>
+    <li>React + Vite SPA. Single bundle, served by the same container.</li>
+    <li>JWT in HttpOnly cookies, bcrypt for local passwords.</li>
+    <li>Active Directory via <code>ldapts</code>, optional and disabled by default.</li>
+    <li>Email via SMTP (<code>nodemailer</code>); SMS via a small Twilio adapter.</li>
+    <li>~320 server tests + Playwright end-to-end specs run on every push.</li>
+    <li>Apache-2.0. Source available on request while the repo finalizes.</li>
+  </ul>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>
+      cambiar.world — built for the workshop, by the people the workshop
+      answers to.
+    </p>
+    <p class="muted">
+      Apache-2.0 licensed. No tracking, no analytics, no third-party
+      requests on this page. <a href="#top">Back to top.</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
