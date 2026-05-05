@@ -122,7 +122,8 @@ a:hover {
 }
 
 .hero .cta { margin: 24px 0 0; }
-.hero .cta-link {
+
+.cta-link {
   display: inline-block;
   background: var(--accent);
   color: #0e1116;
@@ -133,7 +134,7 @@ a:hover {
   border-bottom: none;
   transition: background-color 120ms ease, transform 120ms ease;
 }
-.hero .cta-link:hover {
+.cta-link:hover {
   background: var(--accent-2);
   border-bottom: none;
   transform: translateY(-1px);

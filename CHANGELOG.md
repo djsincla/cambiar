@@ -7,7 +7,7 @@ uses semantic versioning.
 ## [0.20.0] — 2026-05-04
 
 ### Added
-- **Standalone landing page** at `marketing/index.html` for sharing the project before the repository goes public. Self-contained HTML + CSS — no JS framework, no analytics, no third-party requests, no build step. Hero, capabilities tour grouped by what they enable, an honest "what it isn't" section, a quick-start snippet, and a "shape of the project" footer. Deployable to GitHub Pages, Netlify, or any static host.
+- **Standalone landing page** at `docs/index.html` for sharing the project. Self-contained HTML + CSS — no JS framework, no analytics, no third-party requests, no build step. Hero, capabilities tour grouped by what they enable, an honest "what it isn't" section, a quick-start snippet, and a "shape of the project" footer. Deployable to GitHub Pages (this is the source folder GitHub Pages publishes), Netlify, or any static host. (The folder was briefly named `marketing/` before being renamed to `docs/` so GitHub Pages could publish it.)
 
 ### Changed
 - App-name default in the running workshop instance is `cambiar.world` (was `cambiar`). The display name lives in `branding.app_name` and is editable through Admin → Settings; this is just the new default for fresh installs.
