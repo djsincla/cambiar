@@ -17,11 +17,11 @@ const DEFAULT_CONFIGS = {
   },
   transition: {
     verb: 'close',
-    changeIdFromSubjectRegex: '\\[Cambiar #(\\d+)\\]',
+    changeIdFromSubjectRegex: '\\[cambiar\\.world #(\\d+)\\]',
     comment: 'via email',
   },
   add_note: {
-    changeIdFromSubjectRegex: '\\[Cambiar #(\\d+)\\]',
+    changeIdFromSubjectRegex: '\\[cambiar\\.world #(\\d+)\\]',
     useBodyAs: 'body',
   },
 };

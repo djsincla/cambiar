@@ -30,7 +30,7 @@ export default function GoogleCalendar() {
         </button>
       </div>
       <div className="muted" style={{ marginBottom: 16 }}>
-        Push-only sync. Cambiar inserts, updates, and deletes events on the configured Google Calendar based on each change's status, schedule, and planned duration. Same scope as the iCal feed: scheduled non-recurring-parent changes in <em>submitted</em>, <em>approved</em>, <em>in_progress</em>, or <em>implemented</em>.
+        Push-only sync. cambiar.world inserts, updates, and deletes events on the configured Google Calendar based on each change's status, schedule, and planned duration. Same scope as the iCal feed: scheduled non-recurring-parent changes in <em>submitted</em>, <em>approved</em>, <em>in_progress</em>, or <em>implemented</em>.
       </div>
 
       {err && <div className="error">{err}</div>}
@@ -52,7 +52,7 @@ export default function GoogleCalendar() {
             </table>
             {!data.enabled && (
               <div className="banner" style={{ marginTop: 12 }}>
-                Sync is inactive. Set <code>notifications.googleCalendar.enabled = true</code>, point <code>credentialsFile</code> at a service-account JSON key, fill in <code>calendarId</code>, share that calendar with the service account's email, then restart Cambiar.
+                Sync is inactive. Set <code>notifications.googleCalendar.enabled = true</code>, point <code>credentialsFile</code> at a service-account JSON key, fill in <code>calendarId</code>, share that calendar with the service account's email, then restart cambiar.world.
               </div>
             )}
           </div>

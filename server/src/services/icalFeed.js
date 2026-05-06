@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { db } from '../db/index.js';
 import { config } from '../config.js';
 
-const FEED_NAME = 'Cambiar — Upcoming Changes';
+const FEED_NAME = 'cambiar.world — Upcoming Changes';
 // How far ahead to publish. Calendar apps cache a long time, so we publish
 // a generous window. Past changes within 7 days are kept so the calendar
 // view still shows recent context.
@@ -58,11 +58,11 @@ export function buildIcalFeed({ now = new Date() } = {}) {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Cambiar//EN',
+    'PRODID:-//cambiar.world//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     `X-WR-CALNAME:${escapeText(FEED_NAME)}`,
-    `X-WR-CALDESC:${escapeText('Upcoming changes from Cambiar.')}`,
+    `X-WR-CALDESC:${escapeText('Upcoming changes from cambiar.world.')}`,
     `X-WR-TIMEZONE:UTC`,
   ];
 
@@ -72,13 +72,13 @@ export function buildIcalFeed({ now = new Date() } = {}) {
     const durMin = r.planned_duration_minutes ?? 30;
     const end = new Date(start.getTime() + durMin * 60_000);
 
-    const summary = `[Cambiar #${r.id}] ${r.title}`;
+    const summary = `[cambiar.world #${r.id}] ${r.title}`;
     const url = changeUrl(r.id);
     const descriptionParts = [
       r.description ? r.description.trim() : '',
       `Status: ${r.status}`,
       `Type: ${r.type_key}`,
-      `Open in Cambiar: ${url}`,
+      `Open in cambiar.world: ${url}`,
     ].filter(Boolean);
 
     lines.push(

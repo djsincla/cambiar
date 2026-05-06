@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { api } from './api.js';
 
-const BrandingContext = createContext({ appName: 'cambiar', logoUrl: null, version: '0.0.0', refresh: () => {} });
+const BrandingContext = createContext({ appName: 'cambiar.world', logoUrl: null, version: '0.0.0', refresh: () => {} });
 
 export function BrandingProvider({ children }) {
-  const [branding, setBranding] = useState({ appName: 'cambiar', logoUrl: null, version: '0.0.0' });
+  const [branding, setBranding] = useState({ appName: 'cambiar.world', logoUrl: null, version: '0.0.0' });
 
   const refresh = useCallback(async () => {
     try {

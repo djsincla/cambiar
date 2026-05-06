@@ -67,7 +67,7 @@ function groupByDay(rows) {
 
 export function renderDigest(schedule, changes) {
   const groups = groupByDay(changes);
-  const subject = `[Cambiar] ${schedule.name} — ${changes.length} change${changes.length === 1 ? '' : 's'} in the next ${schedule.lookaheadDays} day${schedule.lookaheadDays === 1 ? '' : 's'}`;
+  const subject = `[cambiar.world] ${schedule.name} — ${changes.length} change${changes.length === 1 ? '' : 's'} in the next ${schedule.lookaheadDays} day${schedule.lookaheadDays === 1 ? '' : 's'}`;
 
   if (changes.length === 0) {
     const text = `No changes scheduled in the next ${schedule.lookaheadDays} days.`;
@@ -75,7 +75,7 @@ export function renderDigest(schedule, changes) {
     return { subject, text, html };
   }
 
-  const textLines = [`Cambiar digest: ${schedule.name}`, ''];
+  const textLines = [`cambiar.world digest: ${schedule.name}`, ''];
   let html = `<h2 style="font-family:system-ui,sans-serif">${escapeHtml(schedule.name)}</h2>`;
   for (const [day, items] of groups) {
     textLines.push(`== ${day} ==`);

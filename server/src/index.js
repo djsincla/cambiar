@@ -19,7 +19,7 @@ startGcalScheduler();
 
 const app = createApp();
 const server = app.listen(config.port, () => {
-  logger.info(`Cambiar listening on http://localhost:${config.port}`);
+  logger.info(`cambiar.world listening on http://localhost:${config.port}`);
 });
 
 const shutdown = (sig) => {

@@ -4,7 +4,7 @@ import { db } from '../db/index.js';
 import { config } from '../config.js';
 
 const DEFAULTS = {
-  'branding.app_name': 'cambiar',
+  'branding.app_name': 'cambiar.world',
   'branding.logo_path': null,
 };
 
@@ -40,7 +40,7 @@ export function clearSetting(key) {
 
 export function getBranding() {
   return {
-    appName: getSetting('branding.app_name') ?? 'cambiar',
+    appName: getSetting('branding.app_name') ?? 'cambiar.world',
     logoUrl: getSetting('branding.logo_path'),
     version: readVersion(),
   };

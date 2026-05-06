@@ -101,9 +101,9 @@ router.post('/email/test', requireRole('admin'), async (req, res) => {
   try {
     await sendEmail({
       to: parse.data.to,
-      subject: '[Cambiar] Test email',
-      text: 'This is a test email from Cambiar. If you got this, your SMTP configuration is working.',
-      html: '<p>This is a test email from <strong>Cambiar</strong>.</p><p>If you got this, your SMTP configuration is working.</p>',
+      subject: '[cambiar.world] Test email',
+      text: 'This is a test email from cambiar.world. If you got this, your SMTP configuration is working.',
+      html: '<p>This is a test email from <strong>cambiar.world</strong>.</p><p>If you got this, your SMTP configuration is working.</p>',
     });
     res.json({ ok: true });
   } catch (err) {

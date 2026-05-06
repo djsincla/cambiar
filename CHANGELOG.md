@@ -4,6 +4,20 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.21.0] — 2026-05-05
+
+### Changed
+- **Product brand renamed from "Cambiar" to "cambiar.world"** in every user-visible surface: SPA topbar default, browser tab title, iCal feed name and `PRODID`, Google Calendar event source, calendar event summaries (`[cambiar.world #N]` instead of `[Cambiar #N]`), email subjects from notifications / digests / alerts / SMTP test, AD-managed group lock messages, Active Directory sync UI copy, settings test email body, and the marketing site copy. Branding default in the settings table is now `cambiar.world`.
+- The repository directory and git URL stay as `cambiar` — that's a stable identifier; only the product name shifted. The README explains this distinction up top.
+- `notifications.email.from` example in `config/notifications.json` is now `cambiar.world <hello@cambiar.world>`.
+
+### Added
+- **Mike's endorsement** in the marketing-site hero. A dashed-border, slightly-tilted seal next to the View on GitHub CTA. Mike has not read the source. Mike is, however, &ldquo;sure it's fine.&rdquo;
+
+### Internal
+- Inbound email rule defaults updated to match the new subject prefix: `\[cambiar\.world #(\d+)\]` (was `\[Cambiar #(\d+)\]`). Existing user-configured email rules in production databases will need to be updated to match the new outbound subjects, or kept as-is to match historical messages.
+- Tests updated to assert the new strings.
+
 ## [0.20.0] — 2026-05-04
 
 ### Added

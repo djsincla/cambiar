@@ -60,7 +60,7 @@ function recipientsFor(event, change) {
 }
 
 function subjectFor(event, change) {
-  const tag = `[Cambiar #${change.id}]`;
+  const tag = `[cambiar.world #${change.id}]`;
   switch (event) {
     case 'submitted':   return `${tag} Submitted: ${change.title}`;
     case 'approved':    return `${tag} Approved: ${change.title}`;

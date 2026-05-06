@@ -91,7 +91,7 @@ describe('GET /ical/upcoming.ics', () => {
     expect(res.headers['content-type']).toMatch(/text\/calendar/);
     expect(res.text).toContain('BEGIN:VCALENDAR');
     expect(res.text).toContain('END:VCALENDAR');
-    expect(res.text).toContain('PRODID:-//Cambiar//EN');
+    expect(res.text).toContain('PRODID:-//cambiar.world//EN');
   });
 
   test('feed includes scheduled submitted/approved/in_progress/implemented and excludes draft/closed/rejected', async () => {
@@ -116,7 +116,7 @@ describe('GET /ical/upcoming.ics', () => {
     expect(approvedBlock).toContain('STATUS:CONFIRMED');
   });
 
-  test('event has DTSTART, DTEND derived from planned duration, SUMMARY with Cambiar prefix, URL', async () => {
+  test('event has DTSTART, DTEND derived from planned duration, SUMMARY with cambiar.world prefix, URL', async () => {
     const { bob, admin } = await ctx();
     const id = await createScheduledChange(bob.agent, admin, { status: 'approved', daysAhead: 1, title: 'shape-test' });
     const t = (await bob.agent.get('/api/auth/me/ical-token')).body.token;
@@ -124,7 +124,7 @@ describe('GET /ical/upcoming.ics', () => {
     const ev = extractEvent(body, id);
     expect(ev).toMatch(/DTSTART:\d{8}T\d{6}Z/);
     expect(ev).toMatch(/DTEND:\d{8}T\d{6}Z/);
-    expect(ev).toContain(`SUMMARY:[Cambiar #${id}] shape-test`);
+    expect(ev).toContain(`SUMMARY:[cambiar.world #${id}] shape-test`);
     expect(ev).toMatch(/URL:\S*\/changes\/\d+/);
   });
 

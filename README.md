@@ -1,10 +1,10 @@
-# Cambiar
+# cambiar.world
 
 **[→ cambiar.world (project site)](https://djsincla.github.io/cambiar/)** &nbsp;·&nbsp; **[Issues & support](https://github.com/djsincla/cambiar/issues)**
 
 API-first change management for small workshops. Node.js + React, local or Active Directory authentication, admin-managed change types and approver groups, email/SMS notifications, recurring changes, inbound email ingestion, iCal + Google Calendar sync, single-container deploy.
 
-> Cambiar — Spanish for *to change*.
+> The name is from the Spanish verb *cambiar* — "to change". The repository directory and git URL keep the short form `cambiar`; everywhere else (UI, emails, calendar feeds, branding) the product is **cambiar.world**.
 
 For a higher-level overview of what the project is, who it's for, and what it deliberately is *not*, see the [project site](https://djsincla.github.io/cambiar/). The rest of this README is the operator-facing manual: installation, configuration, API reference, and contributing notes.
 

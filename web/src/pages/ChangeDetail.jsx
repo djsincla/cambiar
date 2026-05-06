@@ -307,7 +307,7 @@ function WhyPanel({ change, requiredApprovalGroups, changeType, userRole }) {
       title = 'You submitted this — someone else has to approve it';
       body = (
         <span>
-          Cambiar enforces segregation of duties: a submitter can never approve their own change.
+          cambiar.world enforces segregation of duties: a submitter can never approve their own change.
           {requiredApprovalGroups.length > 0
             ? <> Approval can come from any one member of: {requiredApprovalGroups.map(g => <span key={g.id} className="badge" style={{ marginLeft: 4 }}>{g.name}</span>)}, or any admin.</>
             : <> Any admin{userRole === 'approver' ? ' or anyone with the legacy approver role' : ''} can approve this.</>}

@@ -18,7 +18,7 @@ describe('GET /api/settings/branding (public)', () => {
   test('returns defaults when no branding configured', async () => {
     const res = await client().get('/api/settings/branding');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ appName: 'cambiar', logoUrl: null });
+    expect(res.body).toMatchObject({ appName: 'cambiar.world', logoUrl: null });
     expect(res.body.version).toMatch(/^\d+\.\d+\.\d+/);
   });
 

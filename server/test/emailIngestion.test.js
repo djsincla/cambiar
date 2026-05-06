@@ -198,17 +198,17 @@ describe('Action: transition', () => {
   test('approves a change by extracting id from subject', async () => {
     const { id, admin: a } = await setupSubmittedChange();
     await a.post('/api/email-rules').send({
-      name: 'approve', subjectPattern: '\\[Cambiar #\\d+\\]',
+      name: 'approve', subjectPattern: '\\[cambiar.world #\\d+\\]',
       actionType: 'transition',
       actionConfig: {
         verb: 'approve',
-        changeIdFromSubjectRegex: '\\[Cambiar #(\\d+)\\]',
+        changeIdFromSubjectRegex: '\\[cambiar.world #(\\d+)\\]',
         comment: 'auto-approved via email',
       },
     });
 
     const r = await processEmail({
-      from: 'approver@x', subject: `Re: [Cambiar #${id}] Reboot`,
+      from: 'approver@x', subject: `Re: [cambiar.world #${id}] Reboot`,
       body: 'lgtm', messageId: '<m-approve@x>',
     });
     expect(r.ok).toBe(true);
@@ -228,13 +228,13 @@ describe('Action: transition', () => {
       typeKey: 'server_reboot', title: 'Draft', fields: REBOOT_FIELDS,
     });
     await a.post('/api/email-rules').send({
-      name: 'close', subjectPattern: '\\[Cambiar #\\d+\\].*RESOLVED',
+      name: 'close', subjectPattern: '\\[cambiar.world #\\d+\\].*RESOLVED',
       actionType: 'transition',
-      actionConfig: { verb: 'close', changeIdFromSubjectRegex: '\\[Cambiar #(\\d+)\\]' },
+      actionConfig: { verb: 'close', changeIdFromSubjectRegex: '\\[cambiar.world #(\\d+)\\]' },
     });
 
     const r = await processEmail({
-      from: 'mon@x', subject: `Re: [Cambiar #${c.body.change.id}] RESOLVED`,
+      from: 'mon@x', subject: `Re: [cambiar.world #${c.body.change.id}] RESOLVED`,
       body: '', messageId: '<m-close-bad@x>',
     });
     expect(r.matched).toBe(true);
@@ -249,7 +249,7 @@ describe('Action: transition', () => {
     await a.post('/api/email-rules').send({
       name: 'close-by-id', subjectPattern: '.*',
       actionType: 'transition',
-      actionConfig: { verb: 'close', changeIdFromSubjectRegex: '\\[Cambiar #(\\d+)\\]' },
+      actionConfig: { verb: 'close', changeIdFromSubjectRegex: '\\[cambiar.world #(\\d+)\\]' },
     });
     const r = await processEmail({ from: 'a@b', subject: 'no token here', body: '', messageId: '<m-no-id@x>' });
     expect(r.ok).toBe(false);
@@ -267,15 +267,15 @@ describe('Action: add_note', () => {
     });
     const cid = c.body.change.id;
     await a.post('/api/email-rules').send({
-      name: 'note', subjectPattern: '\\[Cambiar #\\d+\\]',
+      name: 'note', subjectPattern: '\\[cambiar.world #\\d+\\]',
       actionType: 'add_note',
       actionConfig: {
-        changeIdFromSubjectRegex: '\\[Cambiar #(\\d+)\\]',
+        changeIdFromSubjectRegex: '\\[cambiar.world #(\\d+)\\]',
         useBodyAs: 'body',
       },
     });
     const r = await processEmail({
-      from: 'reporter@x', subject: `Re: [Cambiar #${cid}] update`,
+      from: 'reporter@x', subject: `Re: [cambiar.world #${cid}] update`,
       body: 'Things are happening on **render-3**.',
       messageId: '<m-note@x>',
     });

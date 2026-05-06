@@ -38,7 +38,7 @@ export default function IcalSubscribe() {
         <button className="secondary" onClick={() => setOpen(false)}>Close</button>
       </div>
       <div className="muted" style={{ marginTop: 8, marginBottom: 12 }}>
-        Subscribe to this URL from Google Calendar, Apple Calendar, or any iCal-compatible app to see upcoming Cambiar changes alongside your other events. The token in the URL is the credential — don't share it widely. Rotate it if it's been exposed.
+        Subscribe to this URL from Google Calendar, Apple Calendar, or any iCal-compatible app to see upcoming cambiar.world changes alongside your other events. The token in the URL is the credential — don't share it widely. Rotate it if it's been exposed.
       </div>
       {isLoading && <div className="muted">Loading…</div>}
       {data && (

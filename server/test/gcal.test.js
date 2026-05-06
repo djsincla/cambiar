@@ -115,7 +115,7 @@ describe('Google Calendar reconciler', () => {
     expect(stored.gcal_synced_at).toBeTruthy();
 
     const inserted = fakeCalendar._calls.find(c => c.op === 'insert');
-    expect(inserted.body.summary).toBe(`[Cambiar #${id}] gcal insert`);
+    expect(inserted.body.summary).toBe(`[cambiar.world #${id}] gcal insert`);
     expect(inserted.body.status).toBe('confirmed'); // approved → confirmed
   });
 
@@ -152,7 +152,7 @@ describe('Google Calendar reconciler', () => {
     expect(eventId2).toBe(eventId1); // same event, just patched
 
     const update = fakeCalendar._calls.find(c => c.op === 'update');
-    expect(update.body.summary).toBe(`[Cambiar #${id}] new title`);
+    expect(update.body.summary).toBe(`[cambiar.world #${id}] new title`);
   });
 
   test('idempotent — a no-change second pass does not re-call the API', async () => {

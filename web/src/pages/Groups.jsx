@@ -46,7 +46,7 @@ export default function Groups() {
                 <tr key={g.id}>
                   <td>
                     {g.name}
-                    {g.adManaged && <span className="badge ad-managed" title="Reconciled from Active Directory on every AD login. Edit the AD group, not Cambiar." style={{ marginLeft: 8 }}>AD-managed</span>}
+                    {g.adManaged && <span className="badge ad-managed" title="Reconciled from Active Directory on every AD login. Edit the AD group, not cambiar.world." style={{ marginLeft: 8 }}>AD-managed</span>}
                   </td>
                   <td>{g.description || <span className="muted">—</span>}</td>
                   <td>{g.memberCount}</td>
@@ -110,7 +110,7 @@ function GroupForm({ groupId, onClose, onSaved, onError }) {
       </h2>
       {adManaged && (
         <div className="muted" style={{ marginBottom: 12 }}>
-          This group is reconciled from Active Directory on every AD login. To change its name, description, or members, edit the corresponding AD group — Cambiar will pick up the change on the next AD login.
+          This group is reconciled from Active Directory on every AD login. To change its name, description, or members, edit the corresponding AD group — cambiar.world will pick up the change on the next AD login.
         </div>
       )}
       <label>Name</label>

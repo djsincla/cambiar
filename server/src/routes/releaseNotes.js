@@ -11,7 +11,7 @@ const CHANGELOG_PATH = resolve(config.repoRoot, 'CHANGELOG.md');
 
 router.get('/', (_req, res) => {
   if (!existsSync(CHANGELOG_PATH)) {
-    return res.json({ content: '# Cambiar\n\nNo CHANGELOG.md found in deployment.', updatedAt: null });
+    return res.json({ content: '# cambiar.world\n\nNo CHANGELOG.md found in deployment.', updatedAt: null });
   }
   // Read on each request — cheap (single small file) and keeps the page in
   // sync with edits to CHANGELOG.md without restarting the server.

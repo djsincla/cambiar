@@ -140,6 +140,34 @@ a:hover {
   transform: translateY(-1px);
 }
 
+/* Mike's seal of approval. Worth more than the paper it's printed on. */
+.endorsement {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 32px 0 0;
+  padding: 14px 22px;
+  border: 2px dashed var(--success);
+  border-radius: 8px;
+  max-width: 540px;
+  transform: rotate(-1.4deg);
+  background: rgba(93, 211, 158, 0.06);
+}
+.endorsement-stamp {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--success);
+  text-transform: uppercase;
+}
+.endorsement-fineprint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+  font-style: italic;
+}
+
 /* ---- main blocks ---- */
 
 main {

@@ -9,7 +9,7 @@ import {
 const router = Router();
 router.use(requireAuth, blockIfPasswordChangeRequired);
 
-const AD_MANAGED_MSG = 'this group is AD-managed and reconciled on every AD login; edit the AD group, not Cambiar';
+const AD_MANAGED_MSG = 'this group is AD-managed and reconciled on every AD login; edit the AD group, not cambiar.world';
 
 router.get('/', (req, res) => {
   res.json({ groups: listGroups() });

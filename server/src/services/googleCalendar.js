@@ -10,7 +10,7 @@
 //      account's email (it ends in iam.gserviceaccount.com) with
 //      "Make changes to events" permission.
 //   5. Copy that calendar's "Calendar ID" into
-//      notifications.googleCalendar.calendarId, then restart Cambiar.
+//      notifications.googleCalendar.calendarId, then restart cambiar.world.
 //
 // We use the `google-auth-library` JWT directly rather than `googleapis`
 // to keep the dependency graph small.
@@ -92,15 +92,15 @@ export function buildEventResource(change) {
     change.description ? change.description.trim() : '',
     `Status: ${change.status}`,
     `Type: ${change.type_key}`,
-    `Open in Cambiar: ${url}`,
+    `Open in cambiar.world: ${url}`,
   ].filter(Boolean).join('\n');
 
   return {
-    summary: `[Cambiar #${change.id}] ${change.title}`,
+    summary: `[cambiar.world #${change.id}] ${change.title}`,
     description,
     start: { dateTime: start.toISOString() },
     end:   { dateTime: end.toISOString() },
-    source: { title: 'Cambiar', url },
+    source: { title: 'cambiar.world', url },
     // 'tentative' for submitted, 'confirmed' otherwise. Google's only
     // other option is 'cancelled' which we use via deleteEvent rather
     // than as a status field.

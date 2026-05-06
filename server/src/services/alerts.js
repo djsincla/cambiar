@@ -161,10 +161,10 @@ async function notifyFired(fired) {
     return `• ${f.kind} on #${f.subjectChangeId}`;
   });
   const subject = fired.length === 1
-    ? `[Cambiar] alert: ${fired[0].kind.replace('_', ' ')} on #${fired[0].subjectChangeId}`
-    : `[Cambiar] ${fired.length} new alerts`;
+    ? `[cambiar.world] alert: ${fired[0].kind.replace('_', ' ')} on #${fired[0].subjectChangeId}`
+    : `[cambiar.world] ${fired.length} new alerts`;
   const text = [
-    'Cambiar raised the following alert(s):',
+    'cambiar.world raised the following alert(s):',
     '',
     ...lines,
     '',

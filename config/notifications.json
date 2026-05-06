@@ -1,7 +1,7 @@
 {
   "email": {
     "enabled": false,
-    "from": "Cambiar <cambiar@example.com>",
+    "from": "cambiar.world <hello@cambiar.world>",
     "smtp": {
       "host": "smtp.example.com",
       "port": 587,
