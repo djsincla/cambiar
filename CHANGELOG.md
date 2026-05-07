@@ -4,6 +4,19 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [0.22.0] — 2026-05-06
+
+### Changed
+- **Node 20 → Node 24** as the supported runtime. Updated in three places that matter operationally:
+  - `Dockerfile` — all three stages (`web-build`, `server-build`, `runtime`) now base on `node:24-bookworm-slim`. Existing deploys keep working until they rebuild; the next `docker compose up -d --build` picks up the new image.
+  - `package.json` `engines.node` → `>=24`. Local installs on Node 20–23 will warn (or fail under `engine-strict`).
+  - `.github/workflows/ci.yml` — both the `test` and `e2e` jobs run on Node 24.
+- 319 server tests still pass under the new runtime (verified locally on Node 25, which is stricter than 24).
+
+### Operator notes
+- If you run cambiar locally outside Docker, install Node 24 (or newer) before pulling: `nvm install 24 && nvm use 24`. Existing `node_modules/` may have native bindings (`better-sqlite3`, `bcrypt`) compiled against Node 20 — wipe and reinstall: `rm -rf node_modules server/node_modules web/node_modules && npm install`.
+- The Docker path needs no extra steps beyond the rebuild.
+
 ## [0.21.0] — 2026-05-05
 
 ### Changed

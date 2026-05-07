@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # ---- Stage 1: build the React frontend ----
-FROM node:20-bookworm-slim AS web-build
+FROM node:24-bookworm-slim AS web-build
 WORKDIR /app
 COPY package.json ./
 COPY web/package.json web/package.json
@@ -10,7 +10,7 @@ COPY web ./web
 RUN npm run build --workspace web
 
 # ---- Stage 2: install server (with native deps for better-sqlite3 + bcrypt) ----
-FROM node:20-bookworm-slim AS server-build
+FROM node:24-bookworm-slim AS server-build
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 build-essential \
@@ -20,7 +20,7 @@ COPY server/package.json server/package.json
 RUN npm install --workspace server --omit=dev
 
 # ---- Stage 3: runtime ----
-FROM node:20-bookworm-slim AS runtime
+FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
