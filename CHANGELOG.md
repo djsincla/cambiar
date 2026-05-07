@@ -4,6 +4,37 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [1.0.0] — 2026-05-07
+
+The flag-planting release. cambiar.world has been running in the workshop for weeks, has a complete change-management surface, and the API has settled. Calling it 1.0.
+
+**No new features in this release** — same code as 0.22.0. This is a stability commitment, not a feature drop. From here on:
+- The HTTP API surface is stable. Breaking changes would land in 2.0 with a clear migration path; non-breaking additions land in minor releases.
+- The on-disk schema (SQLite + migrations folder + uploads/) is stable. Migrations only ever go forward.
+- Branding defaults, CHANGELOG conventions, and the operator manual are stable.
+
+**What landed across the 0.x series** (compressed retrospective; see entries below for detail):
+- Local + AD/LDAP auth with allowlist + group/role sync
+- Admin-managed change types with auto-approve + per-type SLA override
+- Lifecycle: draft → submitted → approved → in_progress → implemented → closed (plus rejected, rolled_back) with full audit
+- Approver groups (any-one-group) with submitter-can't-approve-own enforcement
+- Notes, attachments (change-wide and threaded under specific notes), templates with copy-as-new
+- Recurring changes (parent → cron → child)
+- Linked changes (depends_on gates start/implement; relates_to is symmetric soft)
+- Inbound email engine (IMAP poller → create / transition / add-note actions)
+- Scheduled email digests with admin-defined recipients
+- Operational alerts (approval-SLA + recurring-drift detection, with email notification)
+- iCal subscription feed (per-user tokenized URL)
+- Google Calendar push-sync (service-account driven, full event lifecycle)
+- Calendar views: month / week / day / list with planned-duration time-grid blocks
+- Light/dark theme, configurable branding (logo + app name)
+- Mobile-responsive layout
+- Standalone marketing site at docs/ (GitHub Pages)
+- 319 server tests + 27 Playwright E2E specs in CI on every push
+- Apache-2.0, single-container deploy, no SaaS dependency
+
+**Approved by Mike. Mike has not read the source.**
+
 ## [0.22.0] — 2026-05-06
 
 ### Changed
