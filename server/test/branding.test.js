@@ -80,13 +80,13 @@ describe('POST /api/settings/branding/logo', () => {
     expect(file.status).toBe(200);
   });
 
-  test('admin uploads SVG', async () => {
+  test('rejects SVG uploads (XSS risk — SVG can carry <script>)', async () => {
     const a = await adminAgent();
     const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>');
     const res = await a.post('/api/settings/branding/logo')
       .attach('logo', svg, { filename: 'logo.svg', contentType: 'image/svg+xml' });
-    expect(res.status).toBe(200);
-    expect(res.body.logoUrl).toMatch(/\.svg$/);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/PNG, JPEG, or WebP/);
   });
 
   test('rejects unsupported file types', async () => {

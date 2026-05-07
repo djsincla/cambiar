@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { mkdirSync } from 'node:fs';
-import { resolve, extname } from 'node:path';
+import { resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { config } from '../config.js';
 import { db } from '../db/index.js';
@@ -15,10 +15,13 @@ router.use(requireAuth, blockIfPasswordChangeRequired);
 const UPLOAD_ROOT = resolve(config.dataDir, 'uploads', 'changes');
 mkdirSync(UPLOAD_ROOT, { recursive: true });
 
+// Allowed MIME types and the canonical on-disk extension for each. SVG is
+// deliberately excluded — SVG natively supports <script> and event handlers,
+// which would execute in the cambiar origin when an attachment is opened
+// directly via /uploads/changes/N/att-xxx.svg.
 const ALLOWED = new Map([
   ['image/png',     '.png'],
   ['image/jpeg',    '.jpg'],
-  ['image/svg+xml', '.svg'],
   ['image/webp',    '.webp'],
   ['image/gif',     '.gif'],
   ['application/pdf', '.pdf'],
@@ -36,7 +39,13 @@ const upload = multer({
       cb(null, dir);
     },
     filename(_req, file, cb) {
-      const ext = extname(file.originalname).toLowerCase() || ALLOWED.get(file.mimetype) || '';
+      // Derive extension from the validated mimetype, NOT the original
+      // filename. The previous order let an attacker upload "evil.html" with
+      // a multipart Content-Type of image/png — fileFilter passed (mimetype
+      // is allowed) but the file landed on disk as att-xxx.html and was
+      // served by express.static as text/html, executing the embedded JS in
+      // cambiar's origin with the victim's session cookie.
+      const ext = ALLOWED.get(file.mimetype) ?? '';
       cb(null, `att-${randomBytes(8).toString('hex')}${ext}`);
     },
   }),

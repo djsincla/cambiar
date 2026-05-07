@@ -90,8 +90,15 @@ export function createApp({ httpLogger = true } = {}) {
 
   // Serve uploaded files (logos etc.) — no auth required because the logo is public branding.
   // fallthrough:false so missing files return 404 instead of falling into the SPA catch-all.
+  // X-Content-Type-Options: nosniff prevents browsers from MIME-sniffing
+  // a binary as HTML/JS — belt-and-suspenders alongside multer deriving
+  // the on-disk extension from the validated mimetype.
   const uploadsDir = resolve(config.dataDir, 'uploads');
-  app.use('/uploads', express.static(uploadsDir, { fallthrough: false, maxAge: '1h' }));
+  app.use('/uploads', express.static(uploadsDir, {
+    fallthrough: false,
+    maxAge: '1h',
+    setHeaders(res) { res.setHeader('X-Content-Type-Options', 'nosniff'); },
+  }));
 
   const webDist = resolve(config.repoRoot, 'web/dist');
   if (existsSync(webDist)) {

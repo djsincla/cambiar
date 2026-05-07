@@ -103,6 +103,48 @@ describe('Change attachments', () => {
     expect(list.body.attachments[0].mimeType).toBe('image/png');
   });
 
+  test('on-disk filename uses extension from validated mimetype, not user-supplied filename (stored XSS hardening)', async () => {
+    // Pre-fix attack: name a file evil.html, declare mimetype image/png. The
+    // mimetype check passed but the on-disk extension came from the original
+    // filename, so express.static served the upload as text/html and any
+    // embedded JS executed in cambiar's origin under the victim's session.
+    // Post-fix: extension is derived from the (allowed) mimetype, so a .html
+    // tail can never land on disk through this endpoint.
+    const a = await adminAgent();
+    const id = await setupChangeBy(a);
+    const html = Buffer.from('<script>fetch("/api/users")</script>');
+    const res = await a.post(`/api/changes/${id}/attachments`)
+      .attach('file', html, { filename: 'evil.html', contentType: 'image/png' });
+    expect(res.status).toBe(201);
+    expect(res.body.attachment.url).toMatch(/\.png$/);
+    expect(res.body.attachment.url).not.toMatch(/\.html/);
+    // Original filename is preserved in the response (informational only).
+    expect(res.body.attachment.originalFilename).toBe('evil.html');
+  });
+
+  test('rejects SVG uploads (XSS risk — SVG can carry <script>)', async () => {
+    const a = await adminAgent();
+    const id = await setupChangeBy(a);
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    const res = await a.post(`/api/changes/${id}/attachments`)
+      .attach('file', svg, { filename: 'evil.svg', contentType: 'image/svg+xml' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/disallowed/i);
+  });
+
+  test('/uploads responses carry X-Content-Type-Options: nosniff', async () => {
+    const a = await adminAgent();
+    const id = await setupChangeBy(a);
+    const png = Buffer.from(
+      '89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da6300010000000500010d0a2db40000000049454e44ae426082',
+      'hex',
+    );
+    const up = await a.post(`/api/changes/${id}/attachments`).attach('file', png, 'shot.png');
+    const fetched = await a.get(up.body.attachment.url);
+    expect(fetched.status).toBe(200);
+    expect(fetched.headers['x-content-type-options']).toBe('nosniff');
+  });
+
   test('rejects disallowed mime types', async () => {
     const a = await adminAgent();
     const id = await setupChangeBy(a);

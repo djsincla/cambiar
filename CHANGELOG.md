@@ -4,6 +4,25 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [1.0.1] — 2026-05-07
+
+Security patch — three stored-XSS vectors closed. Operators on 1.0.0 should upgrade.
+
+### Fixed
+- **Attachment upload extension is now derived from the validated mimetype, not the user-supplied filename** (`server/src/routes/attachments.js`). Previously, naming a file `evil.html` and declaring multipart Content-Type `image/png` let the file land on disk as `att-xxx.html`, which `express.static` then served as `text/html` — executing any embedded JS in cambiar's origin under the viewing user's session. Any authenticated user could upload; any user who clicked the resulting `/uploads/...` URL was the victim. Mimetype is allowlisted as before; the on-disk extension now comes from the allowlist mapping rather than the original filename.
+- **SVG uploads removed from the allowlist** for both attachments (`routes/attachments.js`) and admin logo uploads (`routes/settings.js`). SVG natively supports `<script>` and event handlers; opening a malicious SVG via `/uploads/...` would execute in cambiar's origin. PNG with transparency covers the visual use case; recommend converting any existing SVG logo to PNG before redeploying.
+- **Markdown component now allowlist-filters URLs in links and images** (`web/src/components/Markdown.jsx`). Notes can be authored by any authenticated user and rendered to any reader. Pre-fix, `[click](javascript:alert(document.body.innerHTML))` rendered as a working JS-execution link. The new `safeUrl()` helper accepts only `http:`, `https:`, `mailto:`, and same-origin relative URLs (`/`, `./`, `../`, `#`); everything else is rewritten to `#`.
+
+### Hardened
+- **`/uploads/*` responses now carry `X-Content-Type-Options: nosniff`** (`server/src/app.js`). Belt-and-suspenders for the attachment fix above — even if a stray binary did land on disk with an unexpected extension in the future, browsers won't sniff and re-interpret it as HTML/JS.
+
+### Tests
+- 3 new server tests in `notesAndAttachments.test.js` covering the on-disk filename derivation, SVG rejection, and the `nosniff` header. The previous "admin uploads SVG" test in `branding.test.js` now asserts SVG is rejected. **322 server tests** (was 319), all green.
+
+### Internal
+- Removed unused `extname` / `existsSync` / `unlinkSync` imports from `routes/attachments.js`.
+- Inline comment in `routes/attachments.js` documents the original attack vector so the next reader doesn't accidentally re-introduce it.
+
 ## [1.0.0] — 2026-05-07
 
 The flag-planting release. cambiar.world has been running in the workshop for weeks, has a complete change-management surface, and the API has settled. Calling it 1.0.

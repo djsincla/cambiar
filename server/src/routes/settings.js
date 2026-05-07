@@ -13,8 +13,12 @@ const router = Router();
 const UPLOAD_DIR = resolve(config.dataDir, 'uploads');
 mkdirSync(UPLOAD_DIR, { recursive: true });
 
-const ALLOWED_MIME = new Set(['image/png', 'image/svg+xml', 'image/jpeg', 'image/webp']);
-const ALLOWED_EXT = new Set(['.png', '.svg', '.jpg', '.jpeg', '.webp']);
+// SVG deliberately excluded — SVG natively supports <script> and event
+// handlers. A malicious SVG logo would execute in cambiar's origin on
+// every page that renders the logo (login screen included). Use PNG with
+// transparency for the same visual outcome.
+const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 const MAX_BYTES = 1 * 1024 * 1024; // 1 MB
 
 const upload = multer({
@@ -29,7 +33,7 @@ const upload = multer({
   fileFilter(_req, file, cb) {
     const ext = extname(file.originalname).toLowerCase();
     if (!ALLOWED_MIME.has(file.mimetype) || !ALLOWED_EXT.has(ext)) {
-      return cb(new Error('only PNG, SVG, JPEG, or WebP are allowed'));
+      return cb(new Error('only PNG, JPEG, or WebP are allowed'));
     }
     cb(null, true);
   },

@@ -3,6 +3,24 @@
 // and [link text](url). Deliberately not a full markdown engine — keeps the
 // bundle small and the behavior predictable.
 
+// URLs in markdown are user-supplied (any authed user can author a note).
+// React doesn't sanitize href/src, so [click](javascript:alert(1)) would
+// otherwise become an executable XSS payload. Allow only http(s), mailto,
+// and same-origin relative URLs; everything else is rewritten to '#'.
+function safeUrl(url) {
+  if (typeof url !== 'string') return '#';
+  const trimmed = url.trim();
+  // Same-origin relative URLs ('/foo', './bar', '../bar', '#hash') are safe.
+  if (trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../') || trimmed.startsWith('#')) {
+    return trimmed;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (['http:', 'https:', 'mailto:'].includes(parsed.protocol)) return trimmed;
+  } catch {}
+  return '#';
+}
+
 function renderInline(text, keyPrefix) {
   // Order matters: links → code → bold → italic. We tokenize sequentially.
   const out = [];
@@ -23,14 +41,14 @@ function renderInline(text, keyPrefix) {
     if (imgM) {
       if (cursor < i) push(text.slice(cursor, i));
       const [, alt, url] = imgM;
-      out.push(<img src={url} alt={alt} key={`${keyPrefix}-${key++}`} className="md-img" />);
+      out.push(<img src={safeUrl(url)} alt={alt} key={`${keyPrefix}-${key++}`} className="md-img" />);
       i += imgM[0].length; cursor = i; continue;
     }
     const linkM = tryMatch(/\[([^\]]+)\]\(([^)]+)\)/y);
     if (linkM) {
       if (cursor < i) push(text.slice(cursor, i));
       const [, label, url] = linkM;
-      out.push(<a href={url} key={`${keyPrefix}-${key++}`} target="_blank" rel="noopener noreferrer">{label}</a>);
+      out.push(<a href={safeUrl(url)} key={`${keyPrefix}-${key++}`} target="_blank" rel="noopener noreferrer">{label}</a>);
       i += linkM[0].length; cursor = i; continue;
     }
     const codeM = tryMatch(/`([^`]+)`/y);
