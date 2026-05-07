@@ -10,6 +10,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Force GitHub-managed JavaScript actions (checkout, setup-node, upload-artifact)
+# to run on Node 24. Without this they default to the deprecated Node 20
+# runtime and emit warnings on every job. Per the deprecation notice this
+# becomes the default in June 2026; setting it now opts in early and keeps
+# logs clean.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   test:
     runs-on: ubuntu-latest
