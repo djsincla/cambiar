@@ -4,6 +4,22 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [1.0.2] — 2026-05-08
+
+Hardening pass — quick wins from the 1.0 code review. No functional changes; all five items are independent and small.
+
+### Added
+- **Per-IP rate limit on `/api/auth/login`** (`express-rate-limit`). 10 attempts per 15-min window per IP. Closes online password-spray; bcrypt cost 12 was already protecting the offline path. Skipped under `NODE_ENV=test` so existing tests (which do many sequential logins) keep working without per-test resets. The 429 response body is `{ "error": "too many login attempts — try again in a few minutes" }`.
+- **`helmet()` defaults except CSP** (`server/src/app.js`). Adds `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Strict-Transport-Security` (in prod), and a few smaller headers in one middleware. Content-Security-Policy is intentionally OFF here — it needs SPA-aware tuning and lands as its own change in 1.1.
+- **`SECURITY.md`** at the repo root. Points to GitHub's private vulnerability reporting form, lists scope, response timeline, and supported versions. The repo's "Security" tab now surfaces it. Private vulnerability reporting is enabled on the repo.
+- **`.github/dependabot.yml`** with weekly grouped updates for npm (root + server + web workspaces), GitHub Actions, and the Dockerfile base image. Production and development deps are grouped separately so review batches are coherent. Major bumps land as individual PRs.
+
+### Fixed
+- **Stale version strings in `/api/health` and `/api`.** Both used to hardcode `0.1.0` (a leftover from project init). They now read `package.json` on each request — same pattern `settings.js` adopted in 0.19.0. The `/api` endpoint also dropped its hand-rolled (and chronically out-of-date) endpoint list in favor of pointers to the project site, source, and issues.
+
+### Tests
+- 322 server tests, all green. The `meta.test.js` test was updated for the new `/api` response shape (`name`/`version`/`docs`/`source`/`issues` instead of an `endpoints` array).
+
 ## [1.0.1] — 2026-05-07
 
 Security patch — three stored-XSS vectors closed. Operators on 1.0.0 should upgrade.

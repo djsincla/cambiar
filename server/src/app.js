@@ -1,7 +1,8 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import pinoHttp from 'pino-http';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { config } from './config.js';
 import { logger } from './logger.js';
@@ -35,37 +36,34 @@ export function createApp({ httpLogger = true } = {}) {
       customLogLevel: (req, res, err) => err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info',
     }));
   }
+
+  // Standard hardening headers. CSP is intentionally OFF here — it's
+  // configured separately in 1.1 because it needs SPA-aware tuning. The
+  // remaining defaults (X-Content-Type-Options, X-Frame-Options DENY,
+  // Referrer-Policy no-referrer, Strict-Transport-Security in prod, etc.)
+  // are appropriate for an internal tool and don't need configuration.
+  app.use(helmet({ contentSecurityPolicy: false }));
+
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
 
-  app.get('/api/health', (_req, res) => res.json({ ok: true, version: '0.1.0' }));
+  // Read the project version on each request — small file, cheap parse, and
+  // a `package.json` bump shows up immediately without needing a restart.
+  // (The previous startup-cache approach drifted whenever the server ran
+  // longer than a release cycle.)
+  const readVersion = () => {
+    try {
+      return JSON.parse(readFileSync(resolve(config.repoRoot, 'package.json'), 'utf8')).version ?? '0.0.0';
+    } catch { return '0.0.0'; }
+  };
+
+  app.get('/api/health', (_req, res) => res.json({ ok: true, version: readVersion() }));
   app.get('/api', (_req, res) => res.json({
-    name: 'cambiar',
-    version: '0.1.0',
-    endpoints: [
-      'POST /api/auth/login',
-      'POST /api/auth/logout',
-      'GET  /api/auth/me',
-      'POST /api/auth/change-password',
-      'GET  /api/users (admin)',
-      'POST /api/users (admin)',
-      'GET  /api/groups',
-      'POST /api/groups (admin)',
-      'PATCH /api/groups/:id (admin)',
-      'DELETE /api/groups/:id (admin)',
-      'GET  /api/change-types',
-      'POST /api/change-types (admin)',
-      'PATCH /api/change-types/:id (admin)',
-      'DELETE /api/change-types/:id (admin)',
-      'GET  /api/changes',
-      'POST /api/changes',
-      'GET  /api/changes/:id',
-      'PATCH /api/changes/:id',
-      'POST /api/changes/:id/{submit,approve,reject,start,implement,close,rollback}',
-      'GET/POST /api/changes/:id/notes, PATCH/DELETE /api/changes/:id/notes/:noteId',
-      'GET/POST /api/changes/:id/attachments, DELETE /api/changes/:id/attachments/:attId',
-      'GET/POST /api/change-templates, GET/PATCH/DELETE /api/change-templates/:id',
-    ],
+    name: 'cambiar.world',
+    version: readVersion(),
+    docs: 'https://djsincla.github.io/cambiar/',
+    source: 'https://github.com/djsincla/cambiar',
+    issues: 'https://github.com/djsincla/cambiar/issues',
   }));
 
   app.use('/api/auth', authRouter);

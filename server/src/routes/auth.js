@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import { signToken, COOKIE_NAME, cookieOptions } from '../auth/jwt.js';
@@ -16,7 +17,21 @@ const loginSchema = z.object({
   password: z.string().min(1).max(1024),
 });
 
-router.post('/login', async (req, res) => {
+// Per-IP rate limit on the login endpoint. Closes online password-spray
+// without throttling well-behaved users. bcrypt cost 12 already makes
+// offline brute force expensive; this is the matching online defense.
+// Skipped in the test suite so existing test fixtures (which do many
+// logins in sequence) keep working without per-test resets.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => config.env === 'test',
+  message: { error: 'too many login attempts — try again in a few minutes' },
+});
+
+router.post('/login', loginLimiter, async (req, res) => {
   const parse = loginSchema.safeParse(req.body);
   if (!parse.success) return res.status(400).json({ error: 'invalid request', details: parse.error.flatten() });
   const { username, password } = parse.data;
