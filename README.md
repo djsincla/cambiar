@@ -135,6 +135,32 @@ What it does:
 
 The script applies any pending migrations before doing the reset, so it's safe on a fresh install too.
 
+## Backups
+
+SQLite + WAL mode is **not safe to copy with `cp`** while the server is running. The `.sqlite` file may be missing committed transactions that live in the `.sqlite-wal` sidecar, and a non-transactional copy is at risk of bad-row corruption. Use the bundled CLI instead — it uses SQLite's online backup API to produce a fully consistent snapshot even with cambiar live.
+
+```bash
+# Default location: data/backups/cambiar-<timestamp>.sqlite
+npm run backup
+
+# Specific path
+npm run backup -- --out /mnt/backups/cambiar-2026-05-07.sqlite
+
+# Also bundle data/uploads/ as a tar.gz alongside (for full restore)
+npm run backup -- --uploads
+```
+
+Inside Docker:
+
+```bash
+docker compose exec cambiar npm run backup -- --uploads
+docker compose cp cambiar:/app/data/backups ./local-backups
+```
+
+**Restore:** stop cambiar, replace `data/cambiar.sqlite` with the snapshot file, restore `data/uploads/` from the tarball if you took one, start cambiar back up. Migrations apply automatically.
+
+A reasonable cadence for a small workshop: cron a daily snapshot to a separate disk, weekly with `--uploads` for the full picture.
+
 ## Repo layout
 
 ```

@@ -43,6 +43,14 @@ export default defineConfig({
       DATA_DIR: E2E_DATA_DIR,
       JWT_SECRET: 'e2e-secret-not-for-production-e2e-secret-not-for-production',
       LOG_LEVEL: 'error',
+      // E2E specs do many sequential logins. The per-IP rate limiter would
+      // trip after ~10 tests; the per-account lockout would trip after ~5
+      // because the adminLogin helper races admin/admin against the new
+      // password (one of the two fails on every test after the first).
+      // Both throttles are exercised in vitest where we control timing
+      // precisely; in E2E we just need them out of the way.
+      CAMBIAR_DISABLE_LOGIN_RATE_LIMIT: '1',
+      CAMBIAR_DISABLE_LOCKOUT: '1',
     },
   },
 });

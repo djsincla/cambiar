@@ -1,4 +1,5 @@
 import { db } from '../db/index.js';
+import { parseJsonOr } from "../db/json.js";
 
 const VALID_FIELD_TYPES = ['string', 'text', 'number', 'select', 'boolean'];
 
@@ -36,7 +37,7 @@ function rowToType(r, includeApproverGroups = true) {
     name: r.name,
     description: r.description,
     icon: r.icon,
-    fields: r.fields_json ? JSON.parse(r.fields_json) : [],
+    fields: parseJsonOr(r.fields_json, []),
     active: Boolean(r.active),
     autoApprove: Boolean(r.auto_approve),
     approvalSlaMinutes: r.approval_sla_minutes ?? null,

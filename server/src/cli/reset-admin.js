@@ -57,7 +57,8 @@ export function resetUser({ username = 'admin', password = null } = {}) {
   if (existing) {
     db.prepare(`
       UPDATE users
-         SET password_hash = ?, must_change_password = 1, active = 1, updated_at = datetime('now')
+         SET password_hash = ?, must_change_password = 1, active = 1,
+             locked_until = NULL, updated_at = datetime('now')
        WHERE id = ?
     `).run(hash, existing.id);
     return { username, password: finalPassword, action: 'reset', generated };

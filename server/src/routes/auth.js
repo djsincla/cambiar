@@ -4,11 +4,21 @@ import { z } from 'zod';
 import { db } from '../db/index.js';
 import { signToken, COOKIE_NAME, cookieOptions } from '../auth/jwt.js';
 import { hashPassword, verifyPassword, validatePasswordStrength } from '../auth/passwords.js';
+import bcrypt from 'bcrypt';
 import { authenticateAD, adEnabled, mapGroupsToRole, userIsAllowedByAD, syncADUserGroups } from '../auth/ad.js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireRole, blockIfPasswordChangeRequired } from '../middleware/auth.js';
 import { getOrCreateIcalToken, rotateIcalToken } from '../services/icalFeed.js';
+import {
+  recordEvent, isUserLocked, maybeLockUser, clearLock,
+  listRecentEvents, policy as lockoutPolicy,
+} from '../services/authEvents.js';
+
+// Pre-computed dummy bcrypt hash. Used when the username doesn't exist so
+// the response time doesn't leak existence — verifyPassword runs the full
+// cost-12 compare against this and returns false either way.
+const TIMING_PADDING_HASH = bcrypt.hashSync('cambiar-timing-padding-not-a-real-password', 12);
 
 const router = Router();
 
@@ -27,7 +37,9 @@ const loginLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => config.env === 'test',
+  // Skip in vitest (NODE_ENV=test) AND in the Playwright E2E suite, which
+  // runs the production server but does many sequential logins.
+  skip: () => config.env === 'test' || process.env.CAMBIAR_DISABLE_LOGIN_RATE_LIMIT === '1',
   message: { error: 'too many login attempts — try again in a few minutes' },
 });
 
@@ -35,20 +47,49 @@ router.post('/login', loginLimiter, async (req, res) => {
   const parse = loginSchema.safeParse(req.body);
   if (!parse.success) return res.status(400).json({ error: 'invalid request', details: parse.error.flatten() });
   const { username, password } = parse.data;
+  const ip = req.ip;
+  const userAgent = req.headers['user-agent'] ?? null;
 
   // 1. Try local first (lets the bootstrap admin always work even if AD is down).
   const localUser = db.prepare(
-    `SELECT id, username, email, display_name, password_hash, role, source, must_change_password, active
+    `SELECT id, username, email, display_name, password_hash, role, source,
+            must_change_password, active, locked_until
      FROM users WHERE username = ? AND source = 'local'`,
   ).get(username);
 
-  if (localUser && config.auth.local?.enabled !== false) {
-    const ok = await verifyPassword(password, localUser.password_hash);
-    if (ok && localUser.active) {
+  // Lockout check is first — even before bcrypt — so a locked account
+  // doesn't burn CPU on every spray attempt. The audit row makes the
+  // attempt visible.
+  if (localUser && isUserLocked(localUser)) {
+    recordEvent({ username, ip, userAgent, outcome: 'account_locked', source: 'local', userId: localUser.id });
+    return res.status(403).json({
+      error: 'account temporarily locked due to repeated failed login attempts; try again later',
+      retryAfterMinutes: lockoutPolicy.durationMinutes,
+    });
+  }
+
+  if (config.auth.local?.enabled !== false) {
+    // Run bcrypt either way: against the real hash if the user exists,
+    // against a dummy hash otherwise. Flattens timing so unknown vs known
+    // username can't be distinguished by response time.
+    const ok = await verifyPassword(password, localUser?.password_hash ?? TIMING_PADDING_HASH);
+
+    if (localUser && ok && localUser.active) {
+      recordEvent({ username, ip, userAgent, outcome: 'success', source: 'local', userId: localUser.id });
+      clearLock(localUser.id);
       return issueSession(res, localUser);
     }
-    if (ok && !localUser.active) {
+    if (localUser && ok && !localUser.active) {
+      recordEvent({ username, ip, userAgent, outcome: 'account_disabled', source: 'local', userId: localUser.id });
       return res.status(403).json({ error: 'account disabled' });
+    }
+    // Wrong password (or unknown user). Record + maybe lock if local user
+    // is real and crossed the threshold.
+    if (localUser) {
+      recordEvent({ username, ip, userAgent, outcome: 'invalid_credentials', source: 'local', userId: localUser.id });
+      if (maybeLockUser(localUser.id, username)) {
+        logger.warn({ username, ip }, 'account locked after repeated failed logins');
+      }
     }
   }
 
@@ -60,11 +101,15 @@ router.post('/login', loginLimiter, async (req, res) => {
         // Allowlist check: when auth.ad.allowedGroups is non-empty, the user
         // must be a member of at least one of those groups.
         if (!userIsAllowedByAD(adUser.groups ?? [])) {
+          recordEvent({ username, ip, userAgent, outcome: 'allowlist_rejected', source: 'ad' });
           logger.warn({ username: adUser.username }, 'AD user rejected by allowedGroups');
           return res.status(403).json({ error: 'access not granted to this directory user' });
         }
         const stored = upsertADUser(adUser);
-        if (!stored.active) return res.status(403).json({ error: 'account disabled' });
+        if (!stored.active) {
+          recordEvent({ username, ip, userAgent, outcome: 'account_disabled', source: 'ad', userId: stored.id });
+          return res.status(403).json({ error: 'account disabled' });
+        }
         // Reconcile Cambiar group memberships from AD groups (auto-creates
         // AD-managed groups, removes the user from synced groups they no
         // longer belong to in AD).
@@ -75,15 +120,48 @@ router.post('/login', loginLimiter, async (req, res) => {
           // Don't block login on sync failure — user can still get in with
           // their last-known group set.
         }
+        recordEvent({ username, ip, userAgent, outcome: 'success', source: 'ad', userId: stored.id });
         return issueSession(res, stored);
       }
+      // AD bind failed (wrong password or unknown user).
+      recordEvent({ username, ip, userAgent, outcome: 'invalid_credentials', source: 'ad' });
     } catch (err) {
       logger.error({ err: err.message }, 'AD auth error');
+      recordEvent({ username, ip, userAgent, outcome: 'ad_unavailable', source: 'ad' });
       return res.status(503).json({ error: 'directory authentication unavailable' });
     }
+  } else if (!localUser) {
+    // Neither local user found nor AD enabled — record so unknown-username
+    // sprays show up in the audit just like wrong-password ones.
+    recordEvent({ username, ip, userAgent, outcome: 'invalid_credentials', source: 'unknown' });
   }
 
   return res.status(401).json({ error: 'invalid credentials' });
+});
+
+// Admin: list recent auth events for the security page.
+router.get('/events', requireAuth, blockIfPasswordChangeRequired, requireRole('admin'), (req, res) => {
+  res.json({
+    events: listRecentEvents({
+      limit: req.query.limit,
+      outcome: req.query.outcome ? String(req.query.outcome) : null,
+    }),
+    policy: lockoutPolicy,
+  });
+});
+
+// Admin: clear a lock (e.g. legitimate user got locked out, can't wait
+// out the timer). Targets username so admins don't need to look up an id.
+router.post('/clear-lock', requireAuth, blockIfPasswordChangeRequired, requireRole('admin'), (req, res) => {
+  const username = String(req.body?.username ?? '');
+  if (!username) return res.status(400).json({ error: 'username required' });
+  const user = db.prepare(`SELECT id FROM users WHERE username = ? AND source = 'local'`).get(username);
+  if (!user) return res.status(404).json({ error: 'no local user with that username' });
+  clearLock(user.id);
+  // Administrative action, not a login attempt — logged to pino, not into
+  // auth_events (which is constrained to login outcomes only).
+  logger.info({ username, by: req.user.username, ip: req.ip }, 'lock cleared by admin');
+  res.json({ ok: true });
 });
 
 router.post('/logout', (req, res) => {

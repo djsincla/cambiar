@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { parseJsonOr } from "../db/json.js";
 import { db } from '../db/index.js';
 
 const VALID_STATUSES = new Set([
@@ -17,9 +18,9 @@ function rowToSchedule(r) {
     cronExpression: r.cron_expression,
     timezone: r.timezone,
     lookaheadDays: r.lookahead_days,
-    statusFilter: JSON.parse(r.status_filter ?? '[]'),
-    recipientUserIds: JSON.parse(r.recipient_user_ids ?? '[]'),
-    recipientEmails: JSON.parse(r.recipient_emails ?? '[]'),
+    statusFilter: parseJsonOr(r.status_filter, []),
+    recipientUserIds: parseJsonOr(r.recipient_user_ids, []),
+    recipientEmails: parseJsonOr(r.recipient_emails, []),
     enabled: Boolean(r.enabled),
     lastRunAt: r.last_run_at,
     lastSentAt: r.last_sent_at,

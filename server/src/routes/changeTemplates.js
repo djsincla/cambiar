@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { parseJsonOr } from "../db/json.js";
 import { z } from 'zod';
 import { db } from '../db/index.js';
 import { requireAuth, blockIfPasswordChangeRequired } from '../middleware/auth.js';
@@ -16,7 +17,7 @@ function rowToTemplate(r) {
     typeKey: r.type_key,
     title: r.title,
     bodyDescription: r.body_description,
-    fields: r.fields_json ? JSON.parse(r.fields_json) : {},
+    fields: parseJsonOr(r.fields_json, {}),
     plannedDurationMinutes: r.planned_duration_minutes,
     createdBy: r.created_by_id ? {
       id: r.created_by_id,

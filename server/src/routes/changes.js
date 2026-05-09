@@ -17,6 +17,7 @@ import {
   addLink, removeLink, getLink, getLinksForChange, getBlockingDeps, LINK_KINDS,
 } from '../services/changeLinks.js';
 import { purgeFilesForAttachments, tryRemoveEmptyChangeDir } from '../services/attachmentFiles.js';
+import { parseJsonOr } from '../db/json.js';
 
 const router = Router();
 router.use(requireAuth, blockIfPasswordChangeRequired);
@@ -100,7 +101,7 @@ router.post('/', (req, res) => {
       typeKey: src.type_key,
       title: `Copy of ${src.title}`,
       description: src.description,
-      fields: src.fields_json ? JSON.parse(src.fields_json) : {},
+      fields: parseJsonOr(src.fields_json, {}),
       plannedDurationMinutes: src.planned_duration_minutes,
     };
     auditDetails = { copiedFromChangeId: parse.data.copyFromChangeId };
@@ -112,7 +113,7 @@ router.post('/', (req, res) => {
       typeKey: t.type_key,
       title: t.title,
       description: t.body_description,
-      fields: t.fields_json ? JSON.parse(t.fields_json) : {},
+      fields: parseJsonOr(t.fields_json, {}),
       plannedDurationMinutes: t.planned_duration_minutes,
     };
     auditDetails = { fromTemplateId: parse.data.templateId };
@@ -270,7 +271,7 @@ router.post('/:id/submit', async (req, res) => {
     return res.status(403).json({ error: 'not your change' });
   }
 
-  const v = validateFields(change.type_key, JSON.parse(change.fields_json));
+  const v = validateFields(change.type_key, parseJsonOr(change.fields_json, {}));
   if (!v.ok) return res.status(400).json({ error: v.error });
 
   // Look up the type once to decide whether this is a standard (auto-approved)
@@ -515,7 +516,7 @@ function formatChange(r) {
     typeKey: r.type_key,
     title: r.title,
     description: r.description,
-    fields: r.fields_json ? JSON.parse(r.fields_json) : {},
+    fields: parseJsonOr(r.fields_json, {}),
     status: r.status,
     submitter: { id: r.submitter_id, username: r.submitter_username, displayName: r.submitter_display_name },
     scheduledAt: r.scheduled_at,

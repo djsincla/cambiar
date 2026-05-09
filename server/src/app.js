@@ -37,12 +37,31 @@ export function createApp({ httpLogger = true } = {}) {
     }));
   }
 
-  // Standard hardening headers. CSP is intentionally OFF here — it's
-  // configured separately in 1.1 because it needs SPA-aware tuning. The
-  // remaining defaults (X-Content-Type-Options, X-Frame-Options DENY,
-  // Referrer-Policy no-referrer, Strict-Transport-Security in prod, etc.)
-  // are appropriate for an internal tool and don't need configuration.
-  app.use(helmet({ contentSecurityPolicy: false }));
+  // Standard hardening headers + a CSP tuned for the SPA. Vite's production
+  // output is hashed bundles loaded same-origin so script-src can lock to
+  // 'self'. style-src allows 'unsafe-inline' because React's style={{...}}
+  // prop emits inline style attributes (that's literal property maps, not
+  // user-controlled CSS, so the inline-style XSS surface is irrelevant).
+  // img-src 'data:' + 'blob:' for any locally-hydrated previews; connect-src
+  // 'self' because the SPA only talks to its own /api/. frame-ancestors
+  // 'none' is the modern X-Frame-Options.
+  app.use(helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        'default-src': ["'self'"],
+        'script-src':  ["'self'"],
+        'style-src':   ["'self'", "'unsafe-inline'"],
+        'img-src':     ["'self'", 'data:', 'blob:'],
+        'connect-src': ["'self'"],
+        'font-src':    ["'self'", 'data:'],
+        'object-src':  ["'none'"],
+        'frame-ancestors': ["'none'"],
+        'base-uri':    ["'self'"],
+        'form-action': ["'self'"],
+      },
+    },
+  }));
 
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());

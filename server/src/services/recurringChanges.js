@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import { parseJsonOr } from "../db/json.js";
 import { db } from '../db/index.js';
 import { logger } from '../logger.js';
 import { recordAudit } from './audit.js';
@@ -16,7 +17,7 @@ function rowToParent(r) {
     typeKey: r.type_key,
     title: r.title,
     description: r.description,
-    fields: r.fields_json ? JSON.parse(r.fields_json) : {},
+    fields: parseJsonOr(r.fields_json, {}),
     plannedDurationMinutes: r.planned_duration_minutes,
     submitterId: r.submitter_id,
     isRecurringParent: Boolean(r.is_recurring_parent),
@@ -167,7 +168,7 @@ export async function spawnChildFromParent(parent, { now = new Date() } = {}) {
   // Validate fields strictly before auto-submit; if they fail, leave the child
   // as draft and surface in the audit log so an operator can fix it.
   const child = db.prepare('SELECT * FROM changes WHERE id = ?').get(childId);
-  const v = validateFields(child.type_key, JSON.parse(child.fields_json));
+  const v = validateFields(child.type_key, parseJsonOr(child.fields_json, {}));
   if (!v.ok) {
     recordAudit({
       changeId: childId, userId: null, action: 'auto_submit_blocked',

@@ -4,6 +4,31 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [1.1.0] — 2026-05-08
+
+Auth hardening + ops release. Five items from the post-1.0 review batch.
+
+### Added
+- **Login-attempt audit trail.** New `auth_events` table records every login attempt — success, invalid credentials, account disabled, account locked, AD unavailable, allowlist rejected — with IP, user agent (truncated to 256 chars), source (local/ad/unknown), and timestamp. Attempts on **unknown** usernames are also captured so password-spray patterns are visible without grepping logs. Available to admins via `GET /api/auth/events` (default 200, max 1000, optional `?outcome=invalid_credentials` filter; response includes the active lockout policy).
+- **Per-account lockout.** After 5 failed attempts within a 15-minute rolling window, a local account is locked for 15 minutes. Locked accounts refuse even the correct password (with `403 retryAfterMinutes: 15`). The lockout check runs **before** bcrypt compare so spraying a locked account doesn't burn CPU. Cleared by a successful login within the window, by `POST /api/auth/clear-lock` (admin-only), by `npm run reset-admin`, or by the 15-min timer expiring naturally.
+- **CSP.** Helmet's `contentSecurityPolicy` now configures explicit directives tuned for the Vite-built SPA: `script-src 'self'`, `style-src 'self' 'unsafe-inline'` (React's `style={{...}}` prop emits inline styles), `img-src 'self' data: blob:`, `connect-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`. The 1.0.2 hardening pass had CSP intentionally off pending this tuning.
+- **Online backup CLI.** `npm run backup` produces a consistent SQLite snapshot via better-sqlite3's online backup API — safe to run while cambiar is live (a plain `cp` of the `.sqlite` file is **not** safe with WAL mode, since committed transactions live in `.sqlite-wal` until checkpoint). Options: `--out PATH` for a specific destination, `--uploads` to bundle `data/uploads/` as a tar.gz alongside. README has a Backups section with restore steps.
+- **`parseJsonOr(text, fallback)` helper** at `server/src/db/json.js`. Wraps every DB-loaded JSON parse (`fields_json`, `details_json`, `action_config`, `status_filter`, `recipient_user_ids`, `recipient_emails`) so a corrupted row logs a warning and falls back instead of crashing the request handler. Retrofit across `routes/changes.js`, `routes/changeTemplates.js`, `services/audit.js`, `services/alerts.js`, `services/changeTypes.js`, `services/digestSchedules.js`, `services/emailActions.js`, `services/emailRules.js`, `services/recurringChanges.js`.
+
+### Changed
+- **Login flow runs bcrypt.compare even when the username doesn't exist** (`routes/auth.js`). Previously, the response time leaked existence — known username took ~250 ms (bcrypt cost 12), unknown returned in microseconds. Now both run a real cost-12 compare against either the user's hash or a startup-computed dummy hash. Eliminates the timing oracle.
+- **`reset-admin` CLI now clears `locked_until`** alongside the password reset. Same recovery path operators already know.
+
+### Operator notes
+- **Two env vars** for test environments to bypass throttles, both set automatically in `playwright.config.js` and **not for production**:
+  - `CAMBIAR_DISABLE_LOGIN_RATE_LIMIT=1` — skips the 1.0.2 per-IP rate limiter
+  - `CAMBIAR_DISABLE_LOCKOUT=1` — skips per-account lockout (audit events still recorded)
+- **Migration 018** adds the `auth_events` table + `users.locked_until` column. Auto-applied on next start.
+
+### Tests
+- 15 new server tests in `authEvents.test.js` covering audit-row shape on every outcome, lockout threshold, lock-survives-correct-password, lock-cleared-by-success, admin clear-lock + event-list endpoints, and the timing-flatness path. **322 → 337 server tests, all green.**
+- E2E: **27/27 Playwright specs pass** under the new CSP. The first E2E run after enabling lockout exposed a test-helper pattern (admin-login races old/new password) that triggered the lock by ~test 6; fix was to skip throttles in E2E env.
+
 ## [1.0.2] — 2026-05-08
 
 Hardening pass — quick wins from the 1.0 code review. No functional changes; all five items are independent and small.

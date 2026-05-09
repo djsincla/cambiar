@@ -1,4 +1,5 @@
 import { db } from '../db/index.js';
+import { parseJsonOr } from "../db/json.js";
 
 export function recordAudit({ changeId, userId, action, fromStatus, toStatus, details }) {
   db.prepare(`
@@ -19,7 +20,7 @@ export function loadAudit(changeId) {
     action: r.action,
     fromStatus: r.from_status,
     toStatus: r.to_status,
-    details: r.details ? JSON.parse(r.details) : null,
+    details: parseJsonOr(r.details, null),
     user: r.user_username ? { id: r.user_id, username: r.user_username, displayName: r.user_display_name } : null,
     createdAt: r.created_at,
   }));

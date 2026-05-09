@@ -1,4 +1,5 @@
 import { db } from '../db/index.js';
+import { parseJsonOr } from "../db/json.js";
 
 const VALID_ACTIONS = ['create_change', 'transition', 'add_note'];
 
@@ -12,7 +13,7 @@ function rowToRule(r) {
     fromPattern: r.from_pattern,
     subjectPattern: r.subject_pattern,
     actionType: r.action_type,
-    actionConfig: JSON.parse(r.action_config || '{}'),
+    actionConfig: parseJsonOr(r.action_config, {}),
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };

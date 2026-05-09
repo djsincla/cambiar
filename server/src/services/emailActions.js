@@ -1,4 +1,5 @@
 import { db } from '../db/index.js';
+import { parseJsonOr } from "../db/json.js";
 import { logger } from '../logger.js';
 import { recordAudit } from './audit.js';
 import { getChangeTypeByKey, validateFields } from './changeTypes.js';
@@ -58,7 +59,7 @@ async function doCreateChange({ rule, email, sysUserId }) {
       typeKey: t.type_key,
       title: t.title,
       description: t.body_description,
-      fields: t.fields_json ? JSON.parse(t.fields_json) : {},
+      fields: parseJsonOr(t.fields_json, {}),
       plannedDurationMinutes: t.planned_duration_minutes,
     };
   }
@@ -95,7 +96,7 @@ async function doCreateChange({ rule, email, sysUserId }) {
   // Optionally submit (and if the type is auto-approve, the type's behavior carries it forward).
   if (cfg.autoSubmit !== false) {
     const change = db.prepare('SELECT * FROM changes WHERE id = ?').get(changeId);
-    const v = validateFields(change.type_key, JSON.parse(change.fields_json));
+    const v = validateFields(change.type_key, parseJsonOr(change.fields_json, {}));
     if (!v.ok) {
       // Field-validation failure on auto-submit: leave as draft, surface in summary.
       return { changeId, summary: `created draft #${changeId} (auto-submit blocked: ${v.error})` };

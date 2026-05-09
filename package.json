@@ -1,6 +1,6 @@
 {
   "name": "cambiar",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "private": true,
   "description": "Lightweight change management for small workshops",
   "license": "Apache-2.0",
@@ -16,6 +16,7 @@
     "migrate": "npm run migrate -w server",
     "reset-admin": "npm run reset-admin -w server --",
     "seed-activity": "npm run seed-activity -w server --",
+    "backup": "npm run backup -w server --",
     "test": "npm test -w server",
     "test:e2e": "playwright test"
   },

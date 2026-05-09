@@ -1,4 +1,5 @@
 import cronParser from 'cron-parser';
+import { parseJsonOr } from "../db/json.js";
 import { db } from '../db/index.js';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
@@ -194,7 +195,7 @@ export function listAlerts({ status = 'active' } = {}) {
     firedAt: r.fired_at,
     resolvedAt: r.resolved_at,
     notifiedAt: r.notified_at,
-    details: r.details_json ? JSON.parse(r.details_json) : null,
+    details: parseJsonOr(r.details_json, null),
     change: r.subject_change_id ? { id: r.subject_change_id, title: r.change_title, status: r.change_status } : null,
   }));
 }
