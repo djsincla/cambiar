@@ -4,6 +4,17 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [1.3.0] — 2026-05-08
+
+Internal refactor — single point of truth for the scheduler boot/shutdown sequence. No user-visible behavior change; no schema change; no config change.
+
+### Changed
+- **`services/schedulerRegistry.js`** centralizes the `start*` / `stop*` invocations for all five schedulers (digest / email / recurring / alerts / gcal). `index.js` now calls `startAllSchedulers()` and `stopAllSchedulers()` and is unaware of the individual modules. Previously the boot sequence had ten lines mentioning each scheduler twice (once to start, once to stop), and adding a sixth would have meant editing `index.js` in two places.
+- **Per-scheduler error isolation.** A failure in one scheduler's `start()` is now logged and isolated (`logger.error` with `scheduler: name`); the boot continues so a misconfigured email poller, for example, doesn't keep the rest of the app from coming up. Previously an exception from `start*` would crash boot.
+
+### Tests
+- 341 server tests, all green. No new tests — this is a structural change covered by the existing scheduler-behavior assertions.
+
 ## [1.2.0] — 2026-05-08
 
 Operability release — gives ops actual signals to monitor instead of guessing.

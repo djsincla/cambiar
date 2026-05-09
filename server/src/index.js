@@ -2,20 +2,12 @@ import { config } from './config.js';
 import { logger } from './logger.js';
 import { runMigrations, bootstrapAdmin, seedChangeTypesFromConfig } from './db/migrate.js';
 import { createApp } from './app.js';
-import { startScheduler, stopScheduler } from './services/digestScheduler.js';
-import { startEmailPoller, stopEmailPoller } from './services/emailPoller.js';
-import { startRecurringScheduler, stopRecurringScheduler } from './services/recurringScheduler.js';
-import { startAlertsScheduler, stopAlertsScheduler } from './services/alertsScheduler.js';
-import { startGcalScheduler, stopGcalScheduler } from './services/gcalScheduler.js';
+import { startAllSchedulers, stopAllSchedulers } from './services/schedulerRegistry.js';
 
 runMigrations();
 bootstrapAdmin();
 seedChangeTypesFromConfig();
-startScheduler();
-startEmailPoller();
-startRecurringScheduler();
-startAlertsScheduler();
-startGcalScheduler();
+startAllSchedulers();
 
 const app = createApp();
 const server = app.listen(config.port, () => {
@@ -24,11 +16,7 @@ const server = app.listen(config.port, () => {
 
 const shutdown = (sig) => {
   logger.info({ sig }, 'shutting down');
-  stopScheduler();
-  stopEmailPoller();
-  stopRecurringScheduler();
-  stopAlertsScheduler();
-  stopGcalScheduler();
+  stopAllSchedulers();
   server.close(() => process.exit(0));
 };
 process.on('SIGINT', shutdown);
