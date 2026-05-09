@@ -22,6 +22,12 @@ import emailLogRouter from './routes/emailLog.js';
 import icalRouter from './routes/ical.js';
 import alertsRouter from './routes/alerts.js';
 import gcalRouter from './routes/gcal.js';
+import metricsRouter from './routes/metrics.js';
+import { db } from './db/index.js';
+import { getAllTicks } from './services/schedulerHealth.js';
+import { alertsEnabled } from './services/alerts.js';
+import { gcalEnabled } from './services/googleCalendar.js';
+import { listEnabledSchedules } from './services/digestSchedules.js';
 
 /**
  * Build an Express app instance. Migrations and admin bootstrap are NOT
@@ -76,7 +82,29 @@ export function createApp({ httpLogger = true } = {}) {
     } catch { return '0.0.0'; }
   };
 
-  app.get('/api/health', (_req, res) => res.json({ ok: true, version: readVersion() }));
+  // Deep healthcheck. Probes the DB and reports per-scheduler liveness.
+  // Returns 503 if any check fails so a load balancer / Docker HEALTHCHECK
+  // can take the container out of rotation. The scheduler "enabled" flag
+  // means "config says it should run"; "lastTickAt" means it has fired at
+  // least once since process start (null until first fire).
+  app.get('/api/health', (_req, res) => {
+    const checks = { db: { ok: false }, schedulers: {} };
+    try { db.prepare('SELECT 1 AS ok').get(); checks.db.ok = true; }
+    catch (err) { checks.db.ok = false; checks.db.error = err.message; }
+
+    const ticks = getAllTicks();
+    checks.schedulers = {
+      digest:    { enabled: listEnabledSchedules().length > 0, lastTickAt: ticks.digest ?? null },
+      recurring: { enabled: true,                              lastTickAt: ticks.recurring ?? null },
+      email:     { enabled: Boolean(config.notifications?.incoming?.enabled), lastTickAt: ticks.email ?? null },
+      alerts:    { enabled: alertsEnabled(),                   lastTickAt: ticks.alerts ?? null },
+      gcal:      { enabled: gcalEnabled(),                     lastTickAt: ticks.gcal ?? null },
+    };
+
+    const ok = checks.db.ok;
+    res.status(ok ? 200 : 503).json({ ok, version: readVersion(), checks });
+  });
+
   app.get('/api', (_req, res) => res.json({
     name: 'cambiar.world',
     version: readVersion(),
@@ -100,6 +128,7 @@ export function createApp({ httpLogger = true } = {}) {
   app.use('/api/email-log', emailLogRouter);
   app.use('/api/alerts', alertsRouter);
   app.use('/api/admin/gcal', gcalRouter);
+  app.use('/api/metrics', metricsRouter);
 
   // Public iCal feed — token-authed via query string, mounted outside /api
   // so calendar subscription URLs don't get caught by the SPA catch-all.

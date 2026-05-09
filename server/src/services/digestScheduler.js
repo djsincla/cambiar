@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { listEnabledSchedules, getSchedule } from './digestSchedules.js';
 import { runDigest } from './digestRenderer.js';
+import { recordTick } from './schedulerHealth.js';
 import { logger } from '../logger.js';
 
 // Map of scheduleId → ScheduledTask. Lets us hot-swap when admins edit.
@@ -9,6 +10,7 @@ const tasks = new Map();
 function fire(scheduleId) {
   // Re-load the schedule on each fire so any in-flight admin edits are
   // honored without needing a process restart.
+  recordTick('digest');
   const s = getSchedule(scheduleId);
   if (!s || !s.enabled) return;
   runDigest(s).catch(err => logger.error({ err: err.message, scheduleId }, 'digest fire failed'));

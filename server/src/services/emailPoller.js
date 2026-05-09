@@ -3,6 +3,7 @@ import { simpleParser } from 'mailparser';
 import { config } from '../config.js';
 import { logger } from '../logger.js';
 import { processEmail } from './emailActions.js';
+import { recordTick } from './schedulerHealth.js';
 
 let intervalHandle = null;
 let polling = false;
@@ -99,6 +100,7 @@ export function startEmailPoller() {
   // Fire once at startup so admins don't wait a full interval after enabling.
   pollOnce().catch(err => logger.error({ err: err.message }, 'initial email poll failed'));
   intervalHandle = setInterval(() => {
+    recordTick('email');
     pollOnce().catch(err => logger.error({ err: err.message }, 'email poll failed'));
   }, cfg.intervalSeconds * 1000);
   logger.info({ host: cfg.host, mailbox: cfg.mailbox, intervalSeconds: cfg.intervalSeconds }, 'email poller started');

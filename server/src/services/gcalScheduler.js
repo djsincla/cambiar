@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { runSync } from './gcalSync.js';
 import { gcalEnabled, gcalConfig } from './googleCalendar.js';
+import { recordTick } from './schedulerHealth.js';
 import { logger } from '../logger.js';
 
 let task = null;
@@ -18,6 +19,7 @@ export function startGcalScheduler() {
     return;
   }
   task = cron.schedule(expr, () => {
+    recordTick('gcal');
     runSync().then(r => {
       if (r.ok && (r.inserted || r.updated || r.deleted || r.errors)) {
         logger.info(r, 'gcal sync pass complete');

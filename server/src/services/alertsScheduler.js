@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { runAlertChecks, alertsEnabled, alertsConfig } from './alerts.js';
+import { recordTick } from './schedulerHealth.js';
 import { logger } from '../logger.js';
 
 let task = null;
@@ -17,6 +18,7 @@ export function startAlertsScheduler() {
     return;
   }
   task = cron.schedule(expr, () => {
+    recordTick('alerts');
     runAlertChecks().catch(err => logger.error({ err: err.message }, 'alert check failed'));
   }, { scheduled: true });
   logger.info({ intervalMinutes: minutes }, 'alerts scheduler started');

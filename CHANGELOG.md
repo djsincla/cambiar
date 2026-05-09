@@ -4,6 +4,38 @@ All notable changes to Cambiar are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses semantic versioning.
 
+## [1.2.0] — 2026-05-08
+
+Operability release — gives ops actual signals to monitor instead of guessing.
+
+### Added
+- **Deep `/api/health`.** Probes the SQLite read path and reports per-scheduler liveness — `digest`, `recurring`, `email`, `alerts`, `gcal` — each with `{ enabled, lastTickAt }`. Returns **503** if the DB check fails so a load balancer / Docker `HEALTHCHECK` can drop the container out of rotation. `lastTickAt` is `null` until the scheduler has fired at least once since process start; subsequent values are ISO timestamps.
+- **`GET /api/metrics`** — Prometheus exposition format (`text/plain; version=0.0.4; charset=utf-8`), admin-only via the existing JWT middleware. Metric families:
+  - `cambiar_users_total{role,active}` — gauge
+  - `cambiar_locked_users_total` — gauge
+  - `cambiar_changes_total{status}` — gauge (excludes recurring parents)
+  - `cambiar_active_alerts_total` — gauge
+  - `cambiar_login_attempts_recent_total{outcome}` — gauge over the last hour
+  - `cambiar_scheduler_last_tick_age_seconds{name}` — gauge (`-1` if never fired since start)
+
+  HTTP-request histograms are deliberately out of scope here — operators usually get those from the reverse proxy.
+
+### Internal
+- New `services/schedulerHealth.js` is a process-local map (`name → ISO timestamp`). Each scheduler's fire callback calls `recordTick(name)`; the healthcheck and metrics route read it. No persistence — restart-resets is the right behavior for a "is the scheduler currently alive?" probe.
+
+### Operator notes
+- Prometheus scrape config:
+  ```yaml
+  - job_name: cambiar
+    metrics_path: /api/metrics
+    bearer_token: "<short-lived JWT — for continuous monitoring put auth behind a reverse proxy>"
+    static_configs: [{ targets: ['cambiar.internal:3000'] }]
+  ```
+- The Docker `HEALTHCHECK` already calls `/api/health`; with the deeper response, `docker inspect` now shows DB + scheduler state in the health log.
+
+### Tests
+- 4 new server tests in `meta.test.js` covering the deeper health response shape, `/api/metrics` admin-only auth, the metric-family HELP/TYPE lines, and recent-login attempts surfacing in `cambiar_login_attempts_recent_total`. **337 → 341 server tests, all green.**
+
 ## [1.1.0] — 2026-05-08
 
 Auth hardening + ops release. Five items from the post-1.0 review batch.

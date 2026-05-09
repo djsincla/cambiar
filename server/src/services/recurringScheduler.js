@@ -2,12 +2,14 @@ import cron from 'node-cron';
 import {
   listEnabledRecurringParents, getRecurringParent, spawnChildFromParent,
 } from './recurringChanges.js';
+import { recordTick } from './schedulerHealth.js';
 import { logger } from '../logger.js';
 
 const tasks = new Map(); // parent change id → ScheduledTask
 
 function fire(parentId) {
   // Re-load on each fire so admin edits propagate without restart.
+  recordTick('recurring');
   const parent = getRecurringParent(parentId);
   if (!parent || !parent.recurrenceEnabled) return;
   spawnChildFromParent(parent)
